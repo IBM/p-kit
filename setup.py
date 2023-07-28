@@ -42,7 +42,7 @@ setup(name='p-kit',
                         # 'tqdm'
                         ],
       extras_require={
-                      'tests': ['pytest', 'seaborn', 'flake8', 'mne', 'pooch'],
+                      'tests': ['pytest', 'seaborn', 'flake8'],
                       },
       zip_safe=False,
 )

@@ -2,6 +2,12 @@
 import numpy as np
 from random import random
 
+def m_to_string(outputs):
+    ret = ""
+    for output in outputs:
+        ret += "1" if output == 1 else "0"
+    return ret
+
 class PCircuit():
 
     """Create and holds J and h parameters.
