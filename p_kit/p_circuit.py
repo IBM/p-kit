@@ -36,6 +36,11 @@ class PCircuit():
         self.J = np.zeros((n_pbits, n_pbits))
         self.i0 = i0
     
+    def set_weight(self, from_pbit, to_pbit, weight, sym=True):
+        self.J[from_pbit, to_pbit] = weight
+        if(sym):
+            self.J[to_pbit, from_pbit] = weight
+    
     def solve(self, Nt, dt):
         # credit: https://www.purdue.edu/p-bit/blog.html
         n_pbits = self.n_pbits
