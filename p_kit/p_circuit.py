@@ -1,16 +1,6 @@
 """Module for pipelines."""
 import numpy as np
 from random import random
-from math import tanh, exp
-
-def rand(min, max):
-    return random() * (max - min) + min
-
-def S(X):
-    return tanh(X)
-
-def sign(X):
-    return X / abs(X)
 
 class PCircuit():
 
@@ -34,28 +24,36 @@ class PCircuit():
 
     """
 
-    def __init__(self, n_pbits):
+    def __init__(self, n_pbits, i0):
         self.n_pbits = n_pbits
         self.h = np.zeros((n_pbits, 1))
         self.J = np.zeros((n_pbits, n_pbits))
-        self.i0 = 0
-        self.I = np.zeros((n_pbits, 1)) + self.i0
-        self.M = np.zeros((n_pbits, 1))
+        self.i0 = i0
     
-    def rf(self, t):
-        return self.i0 * exp(-t)
+    def solve(self, Nt, dt):
+        # credit: https://www.purdue.edu/p-bit/blog.html
+        n_pbits = self.n_pbits
+        indices = range(n_pbits)
 
-    def update_I(self, t):
-        for i in range(self.n_pbits):
-            self.I[i] = self.rf(t) * (
-                            self.h[i] +
-                            sum(self.J[i, j] * self.M[j] for j in range(self.n_pbits))
-                        )
+        all_m = [[]] * Nt
 
-    def update_M(self): # t?
-        for i in range(self.n_pbits):
-            self.M[i] = sign(rand(-1, 1) + S(self.I[i]))
+        I = [0] * n_pbits
+        s = [0] * n_pbits
+        m = [np.sign(0.5 - random()) for _ in indices]
+        
+        
+        for run in range(Nt):
 
-    def solve(self, t):
-        self.update_I(t)
-        self.update_M()
+            # compute input biases
+            I = [-1 * self.i0 * (np.dot(m, self.J[i]) + self.h[i]) for i in indices]
+            
+            # apply S(input)
+            s = [np.exp(-1 * dt * np.exp(-1 * m[i] * I[i])) for i in indices]
+
+            # compute new output
+            m = [m[i] * np.sign(s[i] - random()) for i in indices]
+            
+            all_m[run] = [_ for _ in m]
+
+        return all_m
+                    
