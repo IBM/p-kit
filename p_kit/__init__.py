@@ -1,4 +1,4 @@
 from ._version import __version__
-from .p_circuit import PCircuit
+from . import core
 
-__all__ = ["__version__", "PCircuit"]
+__all__ = ["__version__", "core"]

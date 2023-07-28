@@ -1,6 +1,5 @@
 """Module for pipelines."""
-from p_kit import PCircuit
-from p_kit.p_circuit import m_to_string
+from p_kit.core import PCircuit, m_to_string
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt

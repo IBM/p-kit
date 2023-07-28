@@ -1,4 +1,3 @@
-"""Module for pipelines."""
 import numpy as np
 from random import random
 
