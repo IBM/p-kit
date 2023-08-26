@@ -36,7 +36,7 @@ setup(name='p-kit',
       install_requires=[
                         'numpy<1.26',
                         'cython',
-                        'cvxpy==1.3.1',
+                        'cvxpy==1.3.2',
                         'scipy==1.10.1',
                         'docplex>=2.21.207',
                         # 'tqdm'
