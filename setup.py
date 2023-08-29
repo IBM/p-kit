@@ -35,11 +35,11 @@ setup(name='p-kit',
       python_requires=">=3.8",
       install_requires=[
                         'numpy<1.26',
-                        'cython',
+                        'cython==3.0.0',
                         'cvxpy==1.3.2',
                         'scipy==1.10.1',
                         'docplex>=2.21.207',
-                        # 'tqdm'
+                        'matplotlib==3.7.2'
                         ],
       extras_require={
                       'tests': ['pytest', 'seaborn', 'flake8'],
