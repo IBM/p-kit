@@ -13,7 +13,7 @@ There is no official release at the moment. Only dev version is available.
 Folow these steps:
 
 1. Clone the repo locally
-2. Set up a Python environment (we recommend Anaconda for example). We support python 3.8 and 3.9.
+2. Set up a Python environment (we recommend Anaconda for example). We support python 3.9 and 3.10.
 3. Run `pip install .` and `pip install .[tests]` (for visualization and testing).
 
 # Getting starting
