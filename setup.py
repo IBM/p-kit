@@ -39,7 +39,7 @@ setup(name='p-kit',
                         'cvxpy==1.3.2',
                         'scipy==1.11.3',
                         'docplex>=2.21.207',
-                        'matplotlib==3.8.0'
+                        'matplotlib==3.8.1'
                         ],
       extras_require={
                       'tests': ['pytest', 'seaborn', 'flake8'],
