@@ -46,7 +46,7 @@ i0 is the strength of the correlation. The closer to 1, the closer p-bit behaves
 ```
 from p_kit.solver.csd_solver import CaSuDaSolver
 solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
-output = solver.solve(c)
+_, output = solver.solve(c)
 ```
 
 The size of the output is 10000 (Nt).
