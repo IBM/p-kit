@@ -1,3 +1,4 @@
 build/*
 p_kit/__pycache__/*
 p_kit.egg-info/*
+*.pyc

@@ -1,7 +1,7 @@
 """Module for pipelines."""
 from p_kit.core import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
-from p_kit.visualization import histplot
+from p_kit.visualization import histplot, vin_vout
 import numpy as np
 
 
@@ -14,6 +14,8 @@ c.h = np.array([2,-1,-1])
 
 solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
 
-output = solver.solve(c)
+input, output = solver.solve(c)
 
 histplot(output)
+
+vin_vout(input, output, p_bit=2)

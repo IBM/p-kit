@@ -11,6 +11,7 @@ class CaSuDaSolver(Solver):
         n_pbits = c.n_pbits
         indices = range(n_pbits)
 
+        all_I = [[]] * self.Nt
         all_m = [[]] * self.Nt
 
         I = [0] * n_pbits
@@ -29,6 +30,7 @@ class CaSuDaSolver(Solver):
             # compute new output
             m = [m[i] * np.sign(s[i] - random()) for i in indices]
             
+            all_I[run] = [_ for _ in I]
             all_m[run] = [_ for _ in m]
 
-        return all_m
+        return np.array(all_I), np.array(all_m)
