@@ -14,11 +14,8 @@ class CaSuDaSolver(Solver):
         all_I = [[]] * self.Nt
         all_m = [[]] * self.Nt
 
-        I = [0] * n_pbits
-        s = [0] * n_pbits
         m = [np.sign(0.5 - random()) for _ in indices]
-        
-        
+
         for run in range(self.Nt):
 
             # compute input biases
