@@ -55,10 +55,10 @@ Let's plot a histogram of it
 
 ```
 from p_kit.visualization import histplot
-histplot(output)
+histplot(output, left_right=True)
 ```
 
-![image](https://github.com/IBM/p-kit/assets/6229031/7988ba75-3f37-4f14-ab31-05c7659619a2)
+![image](https://github.com/IBM/p-kit/assets/6229031/43a6223c-9634-48ca-9eae-c4f7584aa9f8)
 
 You can see here that the states are not randomly distributed.
 
