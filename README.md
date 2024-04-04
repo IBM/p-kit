@@ -55,7 +55,7 @@ Let's plot a histogram of it
 
 ```
 from p_kit.visualization import histplot
-histplot(output, left_right=True)
+histplot(output)
 ```
 
 ![image](https://github.com/IBM/p-kit/assets/6229031/43a6223c-9634-48ca-9eae-c4f7584aa9f8)

@@ -1,8 +1,7 @@
 """Utils method for visualization"""
 
-def m_to_string(outputs, left_right=True):
+def m_to_string(outputs):
     ret = ""
-    states = reversed(outputs) if left_right else outputs
-    for output in states:
+    for output in outputs:
         ret += "1" if output == 1 else "0"
     return ret

@@ -19,7 +19,7 @@ class CaSuDaSolver(Solver):
         for run in range(self.Nt):
 
             # compute input biases
-            I = [-1 * self.i0 * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
+            I = [self.i0 * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
             
             # apply S(input)
             s = [np.exp(-1 * self.dt * np.exp(-1 * m[i] * I[i])) for i in indices]
