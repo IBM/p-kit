@@ -38,7 +38,6 @@ setup(name='p-kit',
                         'cython==3.0.10',
                         'cvxpy==1.4.2',
                         'scipy==1.12.0',
-                        'docplex>=2.21.207',
                         'matplotlib==3.8.3'
                         ],
       extras_require={
