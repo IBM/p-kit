@@ -4,11 +4,11 @@ from .utils import m_to_string
 import matplotlib.pyplot as plt
 import numpy as np
 
-def histplot(output):
+def histplot(output, left_right=True):
     ret = {}
 
     for m in output:
-        s = m_to_string(m)
+        s = m_to_string(m, left_right)
         if s in ret:
             ret[s] = ret[s] + 1
         else:

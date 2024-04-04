@@ -20,7 +20,10 @@ solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
 
 input, output = solver.solve(c)
 
-histplot(output)
+# left_right will display the p-bit state from left to right
+# (i.e., in reverse order as compared to the biases)
+# so when you read 010 you understand that: 0 & 1 = 0"
+histplot(output, left_right=True)
 
 # function characteristic of p_bit 2
 vin_vout(input, output, p_bit=2)
