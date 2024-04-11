@@ -3,6 +3,7 @@ from p_kit.core import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.visualization import histplot, vin_vout
 import numpy as np
+from p_kit.visualization.utils import truth_table
 
 
 c = PCircuit(3)
