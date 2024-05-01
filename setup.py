@@ -38,7 +38,7 @@ setup(name='p-kit',
                         'cython==3.0.10',
                         'cvxpy==1.4.2',
                         'scipy==1.13.0',
-                        'matplotlib==3.8.3'
+                        'matplotlib==3.8.4'
                         ],
       extras_require={
                       'tests': ['pytest', 'seaborn', 'flake8'],
