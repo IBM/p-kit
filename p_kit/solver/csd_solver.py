@@ -25,7 +25,7 @@ class CaSuDaSolver(Solver):
             s = [np.exp(-1 * self.dt * np.exp(-1 * m[i] * I[i])) for i in indices]
 
             # compute new output
-            m = [m[i] * np.sign(s[i] - random()) for i in indices]
+            m = [m[i] * np.sign(s[i] - random() + self.threshold) for i in indices]
             
             all_I[run] = [_ for _ in I]
             all_m[run] = [_ for _ in m]
