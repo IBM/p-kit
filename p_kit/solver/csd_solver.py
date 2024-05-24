@@ -22,7 +22,8 @@ class CaSuDaSolver(Solver):
             I = [self.i0 * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
             
             # apply S(input)
-            s = [np.exp(-1 * self.dt * np.exp(-1 * m[i] * I[i])) for i in indices]
+            threshold = np.arctanh(self.expected_mean)
+            s = [np.exp(-1 * self.dt * np.exp(-1 * m[i] * (I[i] + threshold))) for i in indices]
 
             # compute new output
             m = [m[i] * np.sign(s[i] - random()) for i in indices]
