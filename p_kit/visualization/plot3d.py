@@ -7,24 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 
+def _binatodeci(binary):
+    # https://stackoverflow.com/questions/64391524/python-converting-binary-list-to-decimal
+    return sum(val*(2**idx) for idx, val in enumerate(reversed(binary)))
 
-# fig = plt.figure()
-# x, y = np.random.rand(2, 100) * 4
-# hist, xedges, yedges = np.histogram2d(x, y, bins=4, range=[[0, 4], [0, 4]])
-
-# # Construct arrays for the anchor positions of the 16 bars.
-# xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
-# xpos = xpos.ravel()
-# ypos = ypos.ravel()
-# zpos = 0
-
-# # Construct arrays with the dimensions for the 16 bars.
-# dx = dy = 0.5 * np.ones_like(zpos)
-# dz = hist.ravel()
-
-# plt.bar3d(xpos, ypos, zpos, dx, dy, dz, zsort='average')
-
-# plt.show()
+def _dectobinstr(dec, ndigits):
+    s = bin(dec)[2:]
+    fill_digits = ndigits - len(s)
+    return "0" * fill_digits + s
 
 def plot3d(output, A=[0], B=[1]):
 
@@ -36,8 +26,9 @@ def plot3d(output, A=[0], B=[1]):
         s = m_to_string(m)
         assert len(s) > len(A) + len(B)
         
-        pA = [int(s[i]) for i in A]
-        pB = [int(s[i]) for i in B]
+        pA = _binatodeci([int(s[i]) for i in A])
+        pB = _binatodeci([int(s[i]) for i in B])
+
         ret[pA, pB] += 1
 
     x = []
@@ -53,27 +44,13 @@ def plot3d(output, A=[0], B=[1]):
             dx.append(0.5)
             dy.append(0.5)
             dz.append(ret[i, j])
-    # x = [i for i in range(nA)]
-    # y = [i for i in range(nB)]
-    # z = 0
-    # dx = [0.5 for i in range(nA)]  # Width of each bar
-    # dy = [0.5 for j in range(nB)]  # Depth of each bar
-    # dz = [5, 4, 7]        # Height of each bar
- 
-    # hist, xedges, yedges = np.histogram2d(x, y, bins=4, range=[[0, nA], [0, nB]])
-    # xpos, ypos = np.meshgrid(xedges[:-1] + 0.25, yedges[:-1] + 0.25, indexing="ij")
-    # xpos = xpos.ravel()
-    # ypos = ypos.ravel()
-    # zpos = 0
-    # dx = dy = 0.5 * np.ones_like(zpos)
-    # dz = hist.ravel()
 
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
     ax.bar3d(x, y, z, dx, dy, dz, zsort='average')
     ax.set_xticks(np.arange(0.25, nA + 0.25, 1))
-    ax.set_xticklabels([i for i in range(nA)])
+    ax.set_xticklabels([_dectobinstr(i, len(A)) for i in range(nA)])
     
     ax.set_yticks(np.arange(0.25, nB + 0.25, 1))
-    ax.set_yticklabels([i for i in range(nB)])
+    ax.set_yticklabels([_dectobinstr(i, len(B)) for i in range(nB)])
     plt.show()
