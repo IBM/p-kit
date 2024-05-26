@@ -20,7 +20,7 @@ def plot3d(output, A=[0], B=[1]):
 
     nA = 2 ** len(A)
     nB = 2 ** len(B)
-    ret = np.ndarray((nA,nB))
+    ret = np.zeros((nA,nB))
 
     for m in output:
         s = m_to_string(m)
@@ -50,7 +50,9 @@ def plot3d(output, A=[0], B=[1]):
     ax.bar3d(x, y, z, dx, dy, dz, zsort='average')
     ax.set_xticks(np.arange(0.25, nA + 0.25, 1))
     ax.set_xticklabels([_dectobinstr(i, len(A)) for i in range(nA)])
-    
+    ax.set_xlabel("A")
+
     ax.set_yticks(np.arange(0.25, nB + 0.25, 1))
     ax.set_yticklabels([_dectobinstr(i, len(B)) for i in range(nB)])
+    ax.set_ylabel("B")
     plt.show()
