@@ -17,5 +17,5 @@ def histplot(output):
     ind = np.arange(len(ret))
 
     plt.bar(ind, list(ret.values()))
-    plt.xticks(ind, list(ret.keys()))
+    plt.xticks(ind, list(ret.keys()), rotation=45, ha="right")
     plt.show()
