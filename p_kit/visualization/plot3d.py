@@ -24,7 +24,7 @@ def plot3d(output, A=[0], B=[1]):
 
     for m in output:
         s = m_to_string(m)
-        assert len(s) > len(A) + len(B)
+        assert len(s) >= len(A) + len(B)
         
         pA = _binatodeci([int(s[i]) for i in A])
         pB = _binatodeci([int(s[i]) for i in B])
