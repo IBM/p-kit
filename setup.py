@@ -37,7 +37,7 @@ setup(name='p-kit',
                         'numpy<1.27',
                         'cython==3.0.10',
                         'cvxpy==1.5.1',
-                        'scipy==1.13.1',
+                        'scipy==1.14.0',
                         'matplotlib==3.9.0'
                         ],
       extras_require={
