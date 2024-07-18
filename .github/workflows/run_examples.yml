@@ -21,6 +21,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python setup.py develop
+        python install .
     - name: Run example and_gate.py
       run: python examples/and_gate.py
