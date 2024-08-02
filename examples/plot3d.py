@@ -21,9 +21,9 @@ c.h = np.array(
 
 solver = CaSuDaSolver(Nt=100000, dt=0.1667, i0=0.8)
 
-input, output = solver.solve(c)
+_, output, _ = solver.solve(c)
 
 histplot(output)
 
 # 3d histogram, displaying the number of count of p0p1 as a function of p2p3
-plot3d(output, A=[0, 1], B=[2, 3])
+plot3d(output, A=[0, 1, 2], B=[2, 3, 4])

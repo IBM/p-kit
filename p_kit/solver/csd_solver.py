@@ -13,6 +13,7 @@ class CaSuDaSolver(Solver):
 
         all_I = [[]] * self.Nt
         all_m = [[]] * self.Nt
+        E = [0] * self.Nt
 
         m = [np.sign(0.5 - random()) for _ in indices]
 
@@ -31,4 +32,6 @@ class CaSuDaSolver(Solver):
             all_I[run] = [_ for _ in I]
             all_m[run] = [_ for _ in m]
 
-        return np.array(all_I), np.array(all_m)
+            E[run] = self.i0 * (np.dot(m, c.h) + np.multiply(0.5, np.dot(np.dot(m, c.J), m)))
+
+        return np.array(all_I), np.array(all_m), E

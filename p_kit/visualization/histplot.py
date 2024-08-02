@@ -18,4 +18,26 @@ def histplot(output):
 
     plt.bar(ind, list(ret.values()))
     plt.xticks(ind, list(ret.keys()), rotation=45, ha="right")
+    plt.xlabel('Outputs')
+    plt.ylabel('Counts')
+    plt.show()
+
+def energyplot(output, energy):
+    E = {}
+    n_runs = len(output)
+    for i in range(0, n_runs):
+        m = output[i]
+        e = energy[i]
+        s = m_to_string(m)
+        if s in E:
+            E[s] = E[s] + e
+        else:
+            E[s] = e
+
+    ind = np.arange(len(E))
+
+    plt.bar(ind, list(E.values()))
+    plt.xticks(ind, list(E.keys()), rotation=45, ha="right")
+    plt.xlabel('Outputs')
+    plt.ylabel('Total energy')
     plt.show()
