@@ -18,7 +18,7 @@ c.h = np.array([1,1,-2])
 
 solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
 
-input, output = solver.solve(c)
+input, output, _ = solver.solve(c)
 
 histplot(output)
 

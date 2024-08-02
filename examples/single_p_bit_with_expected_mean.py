@@ -18,7 +18,7 @@ for expected_mean in range(-N, N, N // 10):
     # When i0=0, the average of outputs should lean towards the expected_mean (default is zero)
     solver = CaSuDaSolver(Nt=100000, dt=0.1667, i0=0, expected_mean=expected_mean)
 
-    _, output = solver.solve(c)
+    _, output, _ = solver.solve(c)
 
     means.append(np.mean(output[:, 0]))
     expected_means.append(expected_mean)
