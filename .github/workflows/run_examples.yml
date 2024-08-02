@@ -22,5 +22,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .
-    - name: Run example and_gate.py
-      run: python examples/and_gate.py
+    - name: Run examples
+      run: |
+        cd examples
+        ls *.py|xargs -n 1 -P 3 python
