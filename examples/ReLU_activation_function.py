@@ -9,10 +9,10 @@ import os
 c = PCircuit(10)
 
 
-#5bit relu new using AND gate and NOT gate
-#p-bits, 1 to 6 are input bits except 2 (intermediate)
-#p-bits, 7 to 11 are output bits
-#7th bit is the sign-bit of output
+#  5bit relu new using AND gate and NOT gate
+#  p-bits, 1 to 6 are input bits except 2 (intermediate)
+#  p-bits, 7 to 11 are output bits
+#  7th bit is the sign-bit of output
 """
 c.J = np.array([[0,-1,0,0,0,0,0,0,0,0,0],
                 [-1,0,-1,-1,-1,-1,0,2,2,2,2],
@@ -31,10 +31,10 @@ c.J = np.array([[0,-1,0,0,0,0,0,0,0,0,0],
 
 
 
-#5bit relu new using NOT IMPLY LOGIC
-#p-bits, 1 to 6 are input bits except 2
-#p-bits, 7 to 11 are output bits
-#10th bit is the output sign-bit
+#  5bit relu new using NOT IMPLY LOGIC
+#  p-bits, 1 to 6 are input bits except 2
+#  p-bits, 7 to 11 are output bits
+#  10th bit is the output sign-bit
 
 c.J = np.array([[0,1,2,0,0,0,0,0,0,0],
                 [1,0,-2,1,-2,1,-2,1,-2,0],
@@ -98,3 +98,7 @@ print(f"Combined data saved to {combined_file_path}")
 
 #vin_vout(input, output, p_bit=3)
 '''
+
+
+
+

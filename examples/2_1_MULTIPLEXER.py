@@ -10,9 +10,10 @@ import os
 c = PCircuit(6)
 
 
-#2:1 MUX using Hamiltonian
+# 2:1 MUX using Hamiltonian
 #c.J = np.array([[0,0,-1,-1,0,2,0],[0,0,-1,0,2,0,0],[-1,-1,0,0,2,0,0],[-1,0,0,0,0,2,0],[0,2,2,0,0,-1,2],[2,0,0,2,-1,0,2],[0,0,0,0,2,2,0]])
 #c.h = np.array([1,1,1,1,-3,-3,2])
+
 
 
 # Reduced number of p-bits using Hamiltonian
@@ -29,7 +30,7 @@ input, output = solver.solve(c)
 histplot(output)
 
 
-#For printing the the values to the external files
+#   For printing the the values to the external files
 #
 # # Get the current working directory
 # current_dir = os.getcwd()
@@ -43,4 +44,6 @@ histplot(output)
 #         f.write(str(element) + '\n')
 #
 # print(f"Array data saved to {file_path}")
+
+
 

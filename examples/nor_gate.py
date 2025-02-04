@@ -30,3 +30,8 @@ plot3d(output, A=[0,1], B=[2,3])
 
 
 #vin_vout(input, output, p_bit=3)
+
+
+
+
+

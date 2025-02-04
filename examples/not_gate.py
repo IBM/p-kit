@@ -21,3 +21,7 @@ histplot(output)
 
 
 vin_vout(input, output, p_bit=1)
+
+
+
+
