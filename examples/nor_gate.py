@@ -1,11 +1,8 @@
 from p_kit.core import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
-from p_kit.visualization import histplot, vin_vout,plot3d
+from p_kit.visualization import histplot, plot3d
 
 import numpy as np
-import matplotlib.pyplot as plt
-
-
 
 
 c = PCircuit(4)
@@ -16,8 +13,7 @@ c.h = np.array([-1,-1,2,0])
 solver = CaSuDaSolver(Nt=25000, dt=0.1667, i0=0.9)
 
 
-
-input, output = solver.solve(c)
+input, output, _ = solver.solve(c)
 
 print(output)
 
@@ -26,12 +22,5 @@ histplot(output)
 
 #3d Histogram plot for the p-bit
 plot3d(output, A=[0,1], B=[2,3])
-
-
-
-#vin_vout(input, output, p_bit=3)
-
-
-
 
 
