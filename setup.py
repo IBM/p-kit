@@ -41,7 +41,7 @@ setup(name='p-kit',
                         'matplotlib==3.9.3'
                         ],
       extras_require={
-                      'tests': ['pytest', 'seaborn', 'flake8'],
+                      'tests': ['pytest', 'seaborn', 'flake8', 'networkx'],
                       },
       zip_safe=False,
 )

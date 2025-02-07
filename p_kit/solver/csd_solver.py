@@ -1,6 +1,5 @@
 from p_kit.core.p_circuit import PCircuit
 from .base_solver import Solver
-from random import random
 import numpy as np
 
 class CaSuDaSolver(Solver):
@@ -15,7 +14,7 @@ class CaSuDaSolver(Solver):
         all_m = [[]] * self.Nt
         E = [0] * self.Nt
 
-        m = [np.sign(0.5 - random()) for _ in indices]
+        m = [np.sign(0.5 - self.random()) for _ in indices]
 
         for run in range(self.Nt):
 
@@ -27,7 +26,7 @@ class CaSuDaSolver(Solver):
             s = [np.exp(-1 * self.dt * np.exp(-1 * m[i] * (I[i] + threshold))) for i in indices]
 
             # compute new output
-            m = [m[i] * np.sign(s[i] - random()) for i in indices]
+            m = [m[i] * np.sign(s[i] - self.random()) for i in indices]
             
             all_I[run] = [_ for _ in I]
             all_m[run] = [_ for _ in m]
