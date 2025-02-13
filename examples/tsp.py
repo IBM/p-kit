@@ -1,8 +1,9 @@
-from p_kit.core import convert_city_graph
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 
+from p_kit.library import TSP
+from p_kit.solver.annealing import linear
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.visualization import histplot, plot3d
 
@@ -22,26 +23,19 @@ city_graph = np.array([[0, 510, 480],
 city_graph *= -1
 
 # Initialize p-circuit
-myp = convert_city_graph(city_graph=city_graph, tsp_modifier=0.33)
+myp = TSP(city_graph=city_graph, tsp_modifier=0.33)
 
 # Get interaction weights and biases
 J, h = myp.J, myp.h
 print(J.shape, h.shape)
 print("Interaction Matrix (J):\n", J)
 
-Nt = int(1e5)
-def annealing(i0, run):
-    v = (0 - i0) / Nt * (run - 1) + i0
-    # v = i0 * (1.0001)**(run - 1)
-    # print(v)
-    return v
-
 # Simulated Annealing Schedule
 end_samples = []
-solver = CaSuDaSolver(Nt=Nt, dt=1 / (2 * len(city_graph)), i0=0.005)
+solver = CaSuDaSolver(Nt=int(1e4), dt=1 / (2 * len(city_graph)), i0=0)
 
-for i in range(100):
-    _, samples, _ = solver.solve(myp, annealing_func=annealing)
+for i in range(200):
+    _, samples, _ = solver.solve(myp, annealing_func=linear)
     end_samples.append(samples[-1, :])
 
 samples = np.array(end_samples)

@@ -1,3 +1,3 @@
-from .p_circuit import PCircuit, convert_city_graph
+from .p_circuit import PCircuit
 
 __all__ = ["PCircuit"]

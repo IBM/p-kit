@@ -1,14 +1,12 @@
 from p_kit.core.p_circuit import PCircuit
+from p_kit.solver.annealing import constant
 from .base_solver import Solver
 import numpy as np
 
 class CaSuDaSolver(Solver):
     # K. Y. Camsari, B. M. Sutton, and S. Datta, ‘p-bits for probabilistic spin logic’, Applied Physics Reviews, vol. 6, no. 1, p. 011305, Mar. 2019, doi: 10.1063/1.5055860.
 
-    def solve(self, c: PCircuit, annealing_func=None):
-
-        if annealing_func == None:
-            annealing_func = lambda i0, run: i0
+    def solve(self, c: PCircuit, annealing_func=constant):
     
         # credit: https://www.purdue.edu/p-bit/blog.html
         n_pbits = c.n_pbits
@@ -23,7 +21,7 @@ class CaSuDaSolver(Solver):
         for run in range(self.Nt):
 
             # compute input biases
-            I = [annealing_func(self.i0, run) * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
+            I = [annealing_func(self, run) * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
             
             # apply S(input)
             threshold = np.arctanh(self.expected_mean)
