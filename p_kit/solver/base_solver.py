@@ -12,5 +12,5 @@ class Solver:
     def random(self):
         return self._random_gen.random()
 
-    def solve(self):
+    def solve(self, annealing_func):
         raise NotImplementedError()
