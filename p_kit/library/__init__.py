@@ -1,3 +1,3 @@
-from .tsp import TSP
+from . import tsp
 
-__all__ = ["TSP"]
+__all__ = ["tsp"]

@@ -6,7 +6,6 @@ class Solver:
         self.dt = dt
         self.i0 = i0
         self.expected_mean = expected_mean
-        print(seed)
         self._random_gen = random.Random(seed)
     
     def random(self):

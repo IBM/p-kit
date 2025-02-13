@@ -38,10 +38,11 @@ setup(name='p-kit',
                         'cython==3.0.11',
                         'cvxpy==1.6.0',
                         'scipy==1.13.1',
-                        'matplotlib==3.9.3'
+                        'matplotlib==3.9.3',
+                        'networkx'
                         ],
       extras_require={
-                      'tests': ['pytest', 'seaborn', 'flake8', 'networkx'],
+                      'tests': ['pytest', 'seaborn', 'flake8'],
                       },
       zip_safe=False,
 )

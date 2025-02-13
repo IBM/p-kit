@@ -1,3 +1,5 @@
+# Adapted from: https://github.com/anirudhgha/p-bit/blob/master/Research/Travelling%20Salesman%20Problem/tsp.py
+
 import numpy as np
 from p_kit.core import PCircuit
 
@@ -31,15 +33,13 @@ class TSP(PCircuit):
 
     def __init__(self, city_graph=None, tsp_modifier=None):
         PCircuit.__init__(self, len(city_graph[0]) ** 2)
+        self.city_graph = np.asarray(city_graph)
         self.tsp_modifier = 1 if tsp_modifier is None else tsp_modifier
-        self._init_city_graph(city_graph)
+        self._init_city_graph()
     
 
-    def _init_city_graph(self, city_graph=None):
-
-            city_graph = np.asarray(city_graph)
-            city_graph = np.divide(city_graph, np.amax(np.abs(city_graph)))
-
+    def _init_city_graph(self):
+            city_graph = np.divide(self.city_graph, np.amax(np.abs(self.city_graph)))
             n_cities = len(city_graph[0])
 
             # Rule 3: negative distances from one city to another
