@@ -15,8 +15,10 @@ class TSP(PCircuit):
 
     Parameters
     ----------
-    n_pbits: string
-        Identifier of the pipeline (for log purposes).
+    city_graph: np.array((n_cities, n_cities))
+        The city graph.
+    tsp_modifier: float, default: 1
+        Value between pbits of same city
 
     Attributes
     ----------
