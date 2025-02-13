@@ -1,6 +1,15 @@
-from .utils import m_to_string
+from .utils import m_to_string, tsp_hist
 from .histplot import histplot, energyplot
 from .vin_vout import vin_vout
 from .plot3d import plot3d
+from .tsp_graph import visualize_tsp_route
 
-__all__ = ["m_to_string", "histplot", "energyplot", "vin_vout", "plot3d"]
+__all__ = [
+    "m_to_string",
+    "tsp_hist",
+    "histplot",
+    "energyplot",
+    "vin_vout",
+    "plot3d",
+    "visualize_tsp_route"
+]

@@ -25,12 +25,17 @@ class PCircuit():
 
     def __init__(self, n_pbits):
         self.n_pbits = n_pbits
-        self.h = np.zeros((n_pbits, 1))
+        self.h = np.zeros((n_pbits,))
         self.J = np.zeros((n_pbits, n_pbits))
     
     def set_weight(self, from_pbit, to_pbit, weight, sym=True):
         self.J[from_pbit, to_pbit] = weight
         if(sym):
             self.J[to_pbit, from_pbit] = weight
-    
-                    
+
+
+    def copy(self):
+        new_circuit = PCircuit(self.n_pbits)
+        new_circuit.J = self.J
+        new_circuit.h = self.h
+        return new_circuit
