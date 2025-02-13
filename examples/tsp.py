@@ -10,8 +10,6 @@ from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.visualization.tsp_graph import visualize_tsp_route
 from p_kit.visualization.utils import tsp_hist
 
-np.set_printoptions(linewidth=300)
-
 # Define city graph (distance matrix)
 city_graph = np.array([[0, 510, 480],
                       [510, 0, 240],
@@ -29,11 +27,11 @@ city_graph *= -1
 circuit = TSP(city_graph=city_graph, tsp_modifier=0.33)
 
 # Simulated Annealing Schedule
-solver = CaSuDaSolver(Nt=int(1e4), dt=1 / (2 * len(city_graph)), i0=0)
+solver = CaSuDaSolver(Nt=int(1e5), dt=1 / (2 * len(city_graph)), i0=0, expected_mean=0, seed=None)
 
 # Increase n_shots to have more reliable results
-n_shots = 200
-samples = execute(solver, circuit, linear, n_shots)
+n_shots = 100
+samples = execute(solver, circuit, linear, n_shots, n_jobs=-1)
 
 # Visualize Best path
 hist = tsp_hist(samples, city_graph)

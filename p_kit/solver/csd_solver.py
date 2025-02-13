@@ -36,3 +36,6 @@ class CaSuDaSolver(Solver):
             E[run] = self.i0 * (np.dot(m, c.h) + np.multiply(0.5, np.dot(np.dot(m, c.J), m)))
 
         return np.array(all_I), np.array(all_m), E
+
+    def copy(self):
+        return CaSuDaSolver(self.Nt, self.dt, self.i0, self.expected_mean, self.seed)

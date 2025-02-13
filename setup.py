@@ -39,7 +39,8 @@ setup(name='p-kit',
                         'cvxpy==1.6.0',
                         'scipy==1.13.1',
                         'matplotlib==3.9.3',
-                        'networkx'
+                        'networkx',
+                        'joblib'
                         ],
       extras_require={
                       'tests': ['pytest', 'seaborn', 'flake8'],
