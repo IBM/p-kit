@@ -33,7 +33,6 @@ class PCircuit():
         if(sym):
             self.J[to_pbit, from_pbit] = weight
 
-
     def copy(self):
         new_circuit = PCircuit(self.n_pbits)
         new_circuit.J = self.J
