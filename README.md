@@ -1,13 +1,23 @@
 # p-kit
 Python library for the simulation of probabilistic circuits.
 
-A probablilstic computers can be either an software emulator or implemented in hardware. Several hardware implementations are proposed: optical, Arduino, etc. 
+Probabilistic computers operate on probabilistic or p-bits that fluctuate between `-1` and `+1` randomly with probability given its neighbors:
 
-There are similarities between the p-bits and the q-bits. We would like to explore the possibility of using p-bits in a smilar way to q-bits. This will allow Quantum circuits to be executed on a probabilistic computer instead of a quantum computer.
+$$\mathbb{P}(s_i=1|s_j)=\tanh\left(\sum_{j} \mathbf{W}_{ij} s_j + b_i\right)$$
+
+By connection to the Boltzmann distribution, the binary vector $\vec{s}$ found with the highest probability minimizes the related Hamiltonian:
+
+$$H(\vec{s})=\mathbf{-s^\intercal W s- h^\intercal s}$$
+
+Probabilistic computers have been known to computer science literature as Boltzmann machines for a number of years but have recently re-emerged as an accelerator target for hardware engineers with the advent of [Coherent Ising Machines](https://www.nature.com/articles/s41534-017-0048-9), [Digital Annealers](https://www.fujitsu.com/global/services/business-services/digital-annealer/), [Oscillator Based Ising Machines](https://link.springer.com/chapter/10.1007/978-3-030-19311-9_19), [Dynamical Ising Machines](https://arxiv.org/abs/2305.06414) and [special purpose accelerators for Simulated Bifurcation](https://ieeexplore.ieee.org/abstract/document/8892209).
+
+### What are Probabilistic Circuits?
+
+[TODO]
 
 Please check the [wiki](https://github.com/IBM/p-kit/wiki) for more information on probabilistic computers.
 
-# Install
+## Install
 
 There is no official release at the moment. Only dev version is available.
 Folow these steps:
@@ -16,7 +26,7 @@ Folow these steps:
 2. Set up a Python environment (we recommend Anaconda for example). We support python 3.9 and 3.10.
 3. Run `pip install .` and `pip install .[tests]` (for visualization and testing).
 
-# Getting starting
+## Getting starting
 
 Create a circuit
 
@@ -61,4 +71,3 @@ histplot(output)
 ![image](https://github.com/IBM/p-kit/assets/6229031/43a6223c-9634-48ca-9eae-c4f7584aa9f8)
 
 You can see here that the states are not randomly distributed.
-
