@@ -4,3 +4,4 @@ p_kit.egg-info/*
 *.pyc
 .vscode/
 .pytest_cache
+**/__pycache__/

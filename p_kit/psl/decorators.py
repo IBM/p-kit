@@ -2,7 +2,7 @@ from .context import *
 
 def module(cls: Type[T]) -> Type[T]:
     """
-    Decorator that transforms a class into a quantum circuit module.
+    Decorator that transforms a class into a probabilistic circuit module.
     
     This decorator provides functionality for managing multiple circuit instances
     and synthesizing their combined matrices.

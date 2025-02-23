@@ -2,7 +2,7 @@ from .port import *
 
 class ModuleContext:
     """
-    Manages the context for a quantum circuit module, handling instance registration
+    Manages the context for a probabilistic circuit module, handling instance registration
     and matrix synthesis.
     
     The ModuleContext class coordinates the global indices of ports across multiple
