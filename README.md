@@ -20,54 +20,99 @@ Please check the [wiki](https://github.com/IBM/p-kit/wiki) for more information 
 ## Install
 
 There is no official release at the moment. Only dev version is available.
-Folow these steps:
+Follow these steps:
 
 1. Clone the repo locally
 2. Set up a Python environment (we recommend Anaconda for example). We support python 3.9 and 3.10.
 3. Run `pip install .` and `pip install .[tests]` (for visualization and testing).
 
-## Getting starting
+## Getting Started
 
-Create a circuit
+Create a circuit using the new decorator-based API:
 
+```python
+from p_kit import psl
+from p_kit.psl import Port
+
+@psl.pcircuit(n_pbits=3)
+class MyCircuit:
+    # Define ports
+    p1 = Port("p1")
+    p2 = Port("p2")
+    p3 = Port("p3")
+    
+    # Define matrices
+    J = np.array([[0, -2, -2],
+                  [-2, 0, 1],
+                  [-2, 1, 0]])
+    
+    h = np.array([[2], [-1], [-1]])
 ```
-from p_kit.core import PCircuit
-c = PCircuit(3)
+
+Create a module to combine circuits:
+
+```python
+@psl.module
+class MyModule:
+    def __init__(self):
+        self.circuit = MyCircuit()
 ```
 
-Set J and h. P-bits are interconnected inside a graph.
-J is the weight of the connection between the p-bits.
-h contains the biases for each p-bits:
-- a high bias forces the p-bit value towards 1
-- a low bias forces the p-bit value towards -1
-- a bias equals to zero, results in a equal probability for the p-bit of being 1 or -1.
+Create a solver and solve the circuit:
+- Nt: number of runs
+- Dt: time interval for constant inputs
+- i0: correlation strength (closer to 1 = closer to boolean logic)
 
-```
-import numpy as np
-c.J = np.array([[0,-2, -2],[-2, 0, 1],[-2, 1, 0]])
-c.h = np.array([2,-1,-1])
-```
-
-Create a solver, and solves the circuit
-Nt stands for the number of runs.
-Dt for the time interval for which the inputs are held constant.
-i0 is the strength of the correlation. The closer to 1, the closer p-bit behaves to boolean logic. 
-
-```
+```python
 from p_kit.solver.csd_solver import CaSuDaSolver
+
 solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
-_, output = solver.solve(c)
+_, output = solver.solve(self.circuit)
 ```
 
-The size of the output is 10000 (Nt).
-It contains the states taken by the p-bits during the 10000 runs.
-Let's plot a histogram of it
+Visualize the results:
 
-```
+```python
 from p_kit.visualization import histplot
 histplot(output)
 ```
 
 ![image](https://github.com/IBM/p-kit/assets/6229031/43a6223c-9634-48ca-9eae-c4f7584aa9f8)
 
-You can see here that the states are not randomly distributed.
+The histogram shows the non-random distribution of states, indicating successful probabilistic computation.
+
+## Advanced Features
+
+### Connection Types
+The library supports multiple types of connections between ports:
+
+```python
+from p_kit.psl import ConnectionType
+
+# No copy connection (shared global index)
+circuit1.p3.connect(circuit2.p1, ConnectionType.NO_COPY)
+
+# Vanilla copy with weight 1.0
+circuit1.p3.connect(circuit2.p1, ConnectionType.VANILLA_COPY)
+
+# Weighted copy with custom weight
+circuit1.p3.connect(circuit2.p1, ConnectionType.WEIGHTED_COPY, weight=0.5)
+```
+
+### Standard Gates
+The library provides common gates:
+
+```python
+from p_kit.psl.gates import ANDGate, ORGate
+
+@psl.module
+class LogicCircuit:
+    def __init__(self):
+        self.and_gate = ANDGate()
+        self.or_gate = ORGate()
+        
+        # Connect gates
+        self.and_gate.output.connect(self.or_gate.input1)
+```
+
+For more information, visit our [documentation](https://github.com/IBM/p-kit/wiki).
