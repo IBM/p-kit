@@ -82,7 +82,10 @@ class ModuleContext:
                     # Add bias
                     if instance.h is not None and port1.index < instance.h.shape[0]:
                         if format == "sparse":
-                            h_global[gi] += float(instance.h[port1.index])
+                            if gi in h_global.keys():
+                                h_global[gi] += float(instance.h[port1.index])
+                            else:
+                                h_global[gi] = float(instance.h[port1.index])
                         else:
                             h_global[gi, 0] += instance.h[port1.index]
 
