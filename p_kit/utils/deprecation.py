@@ -3,8 +3,14 @@ import warnings
 import functools
 
 
-def warn_deprecated(old_name, new_name, since_version="0.1.0", remove_version="1.0.0", 
-                   obj_type="function", example=None):
+def warn_deprecated(
+    old_name,
+    new_name,
+    since_version="0.1.0",
+    remove_version="1.0.0",
+    obj_type="function",
+    example=None,
+):
     """
     Generate a standardized deprecation warning for p-kit.
 
@@ -31,15 +37,11 @@ def warn_deprecated(old_name, new_name, since_version="0.1.0", remove_version="1
         f"{old_name} {obj_type} is deprecated since version {since_version} and will be "
         f"removed in version {remove_version}. Use {new_name} instead."
     )
-    
+
     if example:
         message += f"\nExample:\n{example}"
-    
-    warnings.warn(
-        message,
-        DeprecationWarning,
-        stacklevel=2
-    )
+
+    warnings.warn(message, DeprecationWarning, stacklevel=2)
 
 
 def deprecated(new_name, since_version="1.0.0", remove_version="2.0.0", example=None):
@@ -62,21 +64,22 @@ def deprecated(new_name, since_version="1.0.0", remove_version="2.0.0", example=
     wrapped : callable
         The wrapped function/class with deprecation warning
     """
+
     def decorator(obj):
         obj_type = "class" if isinstance(obj, type) else "function"
-        
+
         if isinstance(obj, type):
             # If it's a class, wrap its __init__
             original_init = obj.__init__
 
             def wrapped_init(self, *args, **kwargs):
                 warn_deprecated(
-                    obj.__name__, 
+                    obj.__name__,
                     new_name,
                     since_version,
                     remove_version,
                     obj_type,
-                    example
+                    example,
                 )
                 original_init(self, *args, **kwargs)
 
@@ -92,9 +95,10 @@ def deprecated(new_name, since_version="1.0.0", remove_version="2.0.0", example=
                     since_version,
                     remove_version,
                     obj_type,
-                    example
+                    example,
                 )
                 return obj(*args, **kwargs)
+
             return wrapped
 
     return decorator

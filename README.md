@@ -13,7 +13,15 @@ Probabilistic computers have been known to computer science literature as Boltzm
 
 ### What are Probabilistic Circuits?
 
-[TODO]
+Probabilistic Circuits or p-circuits are any realization of ordinary sequential computation (both classical and quantum!) using p-bits. To date, there are two design frameworks used to implement probabilistic spin logic:
+
+#### Probabilistic Spin Logic
+
+This framework realises classical computation in an "invertible" format, that is, unlike ordinary classical logic - a digital circuit can be run both forwards and backwards by using Gibbs sampling. To instantiate a PSL circuit, we can use the one-to-one relationship between digital logic gates and probabilistic spin logic gates.
+
+#### Probabilistic Approximate Optimization Algorithms
+
+Drawing inspiration from Quantum Approximate Optimization algorithms, PAOA represents a subset of QAOA that can be simulated probabilistically - this class of algorithms includes Clifford group quantum emulation, smaller implementations of Shor's algorithm and unusual applications typically reserved for Quantum Computers.
 
 Please check the [wiki](https://github.com/IBM/p-kit/wiki) for more information on probabilistic computers.
 
@@ -67,7 +75,7 @@ Create a solver and solve the circuit:
 from p_kit.solver.csd_solver import CaSuDaSolver
 
 solver = CaSuDaSolver(Nt=10000, dt=0.1667, i0=0.8)
-_, output = solver.solve(self.circuit)
+_, output = solver.solve(c)
 ```
 
 Visualize the results:
