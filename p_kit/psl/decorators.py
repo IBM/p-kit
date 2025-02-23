@@ -1,11 +1,17 @@
 from .context import *
 
+from typing import Type, TypeVar, Dict, Union, Tuple
+import numpy as np
+
+T = TypeVar('T')
+
 def module(cls: Type[T]) -> Type[T]:
     """
     Decorator that transforms a class into a probabilistic circuit module.
     
     This decorator provides functionality for managing multiple circuit instances
-    and synthesizing their combined matrices.
+    and synthesizing their combined matrices. The synthesize method supports both
+    sparse and dense matrix formats.
     
     Args:
         cls (Type[T]): Class to be decorated
@@ -19,6 +25,15 @@ def module(cls: Type[T]) -> Type[T]:
         >>>     def __init__(self):
         >>>         self.gate1 = ANDGate()
         >>>         self.gate2 = ANDGate()
+        >>>
+        >>> # Create instance and synthesize matrices
+        >>> circuit = MyCircuit()
+        >>> 
+        >>> # Get sparse representation (default)
+        >>> J_sparse, h_sparse = circuit.synthesize()
+        >>> 
+        >>> # Get dense matrix representation
+        >>> J_dense, h_dense = circuit.synthesize(format='dense')
     """
     context = ModuleContext()
     
@@ -36,8 +51,33 @@ def module(cls: Type[T]) -> Type[T]:
             if hasattr(attr_value, 'n_pbits'):
                 self._context.register_instance(attr_value)
     
-    def synthesize(self) -> Tuple[np.ndarray, np.ndarray]:
-        return self._context.synthesize()
+    def synthesize(self, format: str = 'sparse') -> Union[
+            Tuple[Dict[int, Dict[int, float]], Dict[int, float]],
+            Tuple[np.ndarray, np.ndarray]]:
+        """
+        Synthesizes the combined circuit matrices in either sparse or dense format.
+        
+        Args:
+            format (str, optional): Output format - 'sparse' or 'dense'. Defaults to 'sparse'.
+                - 'sparse': Returns adjacency list representation as nested dictionaries
+                - 'dense': Returns numpy arrays
+        
+        Returns:
+            If format=='sparse':
+                Tuple[Dict[int, Dict[int, float]], Dict[int, float]]:
+                    - J: Adjacency list where J[i][j] is the weight of edge i->j
+                    - h: Dictionary where h[i] is the bias of node i
+            If format=='dense':
+                Tuple[np.ndarray, np.ndarray]:
+                    - J: Dense coupling matrix
+                    - h: Dense bias vector
+                    
+        Raises:
+            ValueError: If format is not 'sparse' or 'dense'
+        """
+        if format not in ['sparse', 'dense']:
+            raise ValueError("Invalid format. Must be either 'sparse' or 'dense'")
+        return self._context.synthesize(format=format)
     
     cls.__new__ = __new__
     cls.__init__ = __init__
