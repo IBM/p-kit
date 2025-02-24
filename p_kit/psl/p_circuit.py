@@ -27,7 +27,7 @@ class PCircuit:
         self.n_pbits = n_pbits
         self.ports = ports #Kept for copy behavior
 
-        self.h = np.zeros((n_pbits, 1))
+        self.h = np.zeros((n_pbits,))
         self.J = np.zeros((n_pbits, n_pbits))
         self._connections = {}
 

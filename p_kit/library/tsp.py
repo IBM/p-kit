@@ -1,7 +1,7 @@
 # Adapted from: https://github.com/anirudhgha/p-bit/blob/master/Research/Travelling%20Salesman%20Problem/tsp.py
 
 import numpy as np
-from p_kit.core import PCircuit
+from p_kit.psl.p_circuit import PCircuit
 
 
 class TSP(PCircuit):
