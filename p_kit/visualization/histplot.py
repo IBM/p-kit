@@ -4,6 +4,7 @@ from .utils import m_to_string
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def histplot(output):
     ret = {}
 
@@ -18,9 +19,10 @@ def histplot(output):
 
     plt.bar(ind, list(ret.values()))
     plt.xticks(ind, list(ret.keys()), rotation=45, ha="right")
-    plt.xlabel('Outputs')
-    plt.ylabel('Counts')
+    plt.xlabel("Outputs")
+    plt.ylabel("Counts")
     plt.show()
+
 
 def energyplot(output, energy):
     E = {}
@@ -38,6 +40,6 @@ def energyplot(output, energy):
 
     plt.bar(ind, list(E.values()))
     plt.xticks(ind, list(E.keys()), rotation=45, ha="right")
-    plt.xlabel('Outputs')
-    plt.ylabel('Total energy')
+    plt.xlabel("Outputs")
+    plt.ylabel("Total energy")
     plt.show()

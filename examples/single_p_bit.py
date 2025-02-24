@@ -1,5 +1,6 @@
 """Module for pipelines."""
-from p_kit.core import PCircuit
+
+from p_kit.psl import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.visualization import histplot
 import numpy as np

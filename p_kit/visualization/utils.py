@@ -1,5 +1,6 @@
 """Utils method for visualization"""
 
+
 def m_to_string(outputs):
     ret = ""
     for output in outputs:
