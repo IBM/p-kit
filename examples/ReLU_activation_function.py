@@ -1,5 +1,6 @@
 """Module for pipelines."""
-from p_kit.core import PCircuit
+
+from p_kit.psl import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
 import numpy as np
 
@@ -32,24 +33,28 @@ c.J = np.array([[0,-1,0,0,0,0,0,0,0,0,0],
 #  p-bits, 7 to 11 are output bits
 #  10th bit is the output sign-bit
 
-c.J = np.array([[0,1,2,0,0,0,0,0,0,0],
-                [1,0,-2,1,-2,1,-2,1,-2,0],
-                [2,-2,0,0,0,0,0,0,0,0],
-                [0,1,0,0,2,0,0,0,0,0],
-                [0,-2,0,2,0,0,0,0,0,0],
-                [0,1,0,0,0,0,2,0,0,0],
-                [0,-2,0,0,0,2,0,0,0,0],
-                [0,1,0,0,0,0,0,0,2,0],
-                [0,-2,0,0,0,0,0,2,0,0],
-                [0,0,0,0,0,0,0,0,0,0]])
+c.J = np.array(
+    [
+        [0, 1, 2, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, -2, 1, -2, 1, -2, 1, -2, 0],
+        [2, -2, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 2, 0, 0, 0, 0, 0],
+        [0, -2, 0, 2, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 2, 0, 0, 0],
+        [0, -2, 0, 0, 0, 2, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 2, 0],
+        [0, -2, 0, 0, 0, 0, 0, 2, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ]
+)
 
-c.h = np.array([1,-4,-2,1,-2,1,-2,1,-2,-2])
+c.h = np.array([1, -4, -2, 1, -2, 1, -2, 1, -2, -2])
 
 solver = CaSuDaSolver(Nt=50000, dt=0.1667, i0=0.9)
 input, output, _ = solver.solve(c)
 
 
-'''
+"""
 #histplot(output)
 #3d Histogram plot for the p-bit
 #plot3d(output, A=[0,1,2,3,4,5], B=[6,7,8,9,10,11])
@@ -93,8 +98,4 @@ print(f"Combined data saved to {combined_file_path}")
 #print(output)
 
 #vin_vout(input, output, p_bit=3)
-'''
-
-
-
-
+"""

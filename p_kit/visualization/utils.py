@@ -1,6 +1,7 @@
 """Utils method for visualization"""
 import numpy as np
 
+
 def m_to_string(outputs):
     ret = ""
     for output in outputs:

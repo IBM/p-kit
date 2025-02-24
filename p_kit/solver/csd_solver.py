@@ -1,4 +1,4 @@
-from p_kit.core.p_circuit import PCircuit
+from p_kit.psl.p_circuit import PCircuit
 from p_kit.solver.annealing import constant
 from .base_solver import Solver
 import numpy as np
