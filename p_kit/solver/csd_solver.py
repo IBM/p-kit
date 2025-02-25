@@ -1,43 +1,42 @@
 from p_kit.psl.p_circuit import PCircuit
+from p_kit.solver.annealing import constant
 from .base_solver import Solver
-from random import random
 import numpy as np
 
 
 class CaSuDaSolver(Solver):
     # K. Y. Camsari, B. M. Sutton, and S. Datta, ‘p-bits for probabilistic spin logic’, Applied Physics Reviews, vol. 6, no. 1, p. 011305, Mar. 2019, doi: 10.1063/1.5055860.
 
-    def solve(self, c: PCircuit):
+    def solve(self, c: PCircuit, annealing_func=constant):
+    
         # credit: https://www.purdue.edu/p-bit/blog.html
         n_pbits = c.n_pbits
-        indices = range(n_pbits)
 
-        all_I = [[]] * self.Nt
-        all_m = [[]] * self.Nt
-        E = [0] * self.Nt
+        all_I = np.zeros((self.Nt, n_pbits))
+        all_m = np.zeros((self.Nt, n_pbits))
+        E = np.zeros(self.Nt)
 
-        m = [np.sign(0.5 - random()) for _ in indices]
+        m = np.sign(0.5 - self.random(n_pbits))
+
+        threshold = np.arctanh(self.expected_mean)
 
         for run in range(self.Nt):
 
             # compute input biases
-            I = [self.i0 * (np.dot(m, c.J[i]) + c.h[i]) for i in indices]
+            I = annealing_func(self, run) * (np.dot(m, c.J) + c.h)
 
             # apply S(input)
-            threshold = np.arctanh(self.expected_mean)
-            s = [
-                np.exp(-1 * self.dt * np.exp(-1 * m[i] * (I[i] + threshold)))
-                for i in indices
-            ]
+            s = np.exp(-self.dt * np.exp(-m * (I + threshold)))
 
             # compute new output
-            m = [m[i] * np.sign(s[i] - random()) for i in indices]
+            m = m * np.sign(s - self.random(n_pbits))
+            
+            all_I[run] = I
+            all_m[run] = m
 
-            all_I[run] = [_ for _ in I]
-            all_m[run] = [_ for _ in m]
+            E[run] = self.i0 * (np.dot(m, c.h) + 0.5 * np.dot(np.dot(m, c.J), m))
 
-            E[run] = self.i0 * (
-                np.dot(m, c.h) + np.multiply(0.5, np.dot(np.dot(m, c.J), m))
-            )
+        return all_I, all_m, E
 
-        return np.array(all_I), np.array(all_m), E
+    def copy(self):
+        return CaSuDaSolver(self.Nt, self.dt, self.i0, self.expected_mean, self.seed)
