@@ -8,7 +8,7 @@ version = None
 with open(op.join('p_kit', '_version.py'), 'r') as fid:
     for line in (line.strip() for line in fid):
         if line.startswith('__version__'):
-            version = line.split('=')[1].strip().strip('\'')
+            version = line.split('=')[1].strip().strip('"')
             break
 if version is None:
     raise RuntimeError('Could not determine version')
@@ -29,7 +29,7 @@ setup(name='p-kit',
       project_urls={
           'Documentation': 'https://github.com/IBM/p-kit/wiki',
           'Source': 'https://github.com/IBM/p-kit',
-          'Tracker': 'https://github.com/IBM/p-kitissues/',
+          'Tracker': 'https://github.com/IBM/p-kit/issues/',
       },
       platforms='any',
       python_requires=">=3.9",
