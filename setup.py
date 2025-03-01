@@ -37,7 +37,7 @@ setup(
     install_requires=[
         "numpy<2.3",
         "cython==3.0.12",
-        "cvxpy==1.6.0",
+        "cvxpy==1.6.2",
         "scipy==1.13.1",
         "matplotlib==3.9.3",
     ],
