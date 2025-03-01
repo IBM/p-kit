@@ -36,7 +36,7 @@ setup(
     python_requires=">=3.9",
     install_requires=[
         "numpy<2.3",
-        "cython==3.0.11",
+        "cython==3.0.12",
         "cvxpy==1.6.0",
         "scipy==1.13.1",
         "matplotlib==3.9.3",
