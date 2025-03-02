@@ -39,7 +39,7 @@ setup(
         "cython==3.0.12",
         "cvxpy==1.6.2",
         "scipy==1.13.1",
-        "matplotlib==3.9.3",
+        "matplotlib==3.10.1",
     ],
     extras_require={
         "tests": ["pytest", "seaborn", "flake8"],
