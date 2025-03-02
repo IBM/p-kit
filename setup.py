@@ -38,7 +38,7 @@ setup(
         "numpy<2.3",
         "cython==3.0.12",
         "cvxpy==1.6.2",
-        "scipy==1.13.1",
+        "scipy==1.15.2",
         "matplotlib==3.9.3",
     ],
     extras_require={
