@@ -32,7 +32,7 @@ setup(name='p-kit',
           'Tracker': 'https://github.com/IBM/p-kit/issues/',
       },
       platforms='any',
-      python_requires=">=3.9",
+      python_requires=">=3.10",
       install_requires=[
                         'numpy<2.3',
                         'cython==3.0.11',
