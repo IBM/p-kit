@@ -37,7 +37,7 @@ setup(name='p-kit',
                         'numpy<2.3',
                         'cython==3.1.1',
                         'cvxpy==1.6.5',
-                        'scipy==1.15.2',
+                        'scipy==1.15.3',
                         'matplotlib==3.10.3',
                         'networkx',
                         'joblib'
