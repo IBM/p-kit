@@ -35,7 +35,7 @@ setup(name='p-kit',
       python_requires=">=3.10",
       install_requires=[
                         'numpy<2.3',
-                        'cython==3.1.2',
+                        'cython==3.1.3',
                         'cvxpy==1.7.1',
                         'scipy==1.15.3',
                         'matplotlib==3.10.6',
