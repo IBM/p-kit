@@ -45,6 +45,7 @@ setup(name='p-kit',
       extras_require={
                       'tests': ['pytest', 'seaborn', 'flake8'],
                       'gpu': ['cupy-cuda13x'],
+                      'docplex': ['docplex'],
                       },
       zip_safe=False,
 )
