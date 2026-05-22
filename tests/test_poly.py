@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from functools import partial
 
-from tests.conftest import requires_module
+from conftest import requires_module
 from p_kit.library.poly import PolyOptimizer
 
 requires_docplex = partial(requires_module, name="docplex")

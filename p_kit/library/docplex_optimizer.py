@@ -37,10 +37,14 @@ class DocplexOptimizer(PolyOptimizer):
 
         # linear_part exists on QuadExpr; fall back to obj itself for LinearExpr
         linear_part = getattr(obj, 'linear_part', obj)
-        for var, coeff in linear_part.iter_terms():
-            coeffs[(var.name,)] = coeffs.get((var.name,), 0) + coeff
-        if linear_part.constant:
-            coeffs[()] = linear_part.constant
+        if hasattr(linear_part, 'iter_terms'):
+            for var, coeff in linear_part.iter_terms():
+                coeffs[(var.name,)] = coeffs.get((var.name,), 0) + coeff
+        elif hasattr(linear_part, 'name'):
+            coeffs[(linear_part.name,)] = coeffs.get((linear_part.name,), 0) + 1.0
+        const = getattr(linear_part, 'constant', 0)
+        if const:
+            coeffs[()] = const
 
         if hasattr(obj, 'iter_quad_triplets'):
             for v1, v2, coeff in obj.iter_quad_triplets():
