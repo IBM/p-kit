@@ -13,9 +13,9 @@ def execute(solver, circuit, annealing, n_shots, n_last_samples=50, n_jobs=-1):
         return time_points[-n_last_samples-1:-1, :]
 
     if getattr(solver, 'device', 'cpu') == 'cuda':
-        # CUDA handles can't be pickled across processes; run in main process
-        samples = [job() for _ in range(n_shots)]
-    else:
-        samples = Parallel(n_jobs=n_jobs)(delayed(job)() for _ in range(n_shots))
+        all_m = solver.solve(circuit, annealing_func=annealing, n_shots=n_shots)
+        samples = all_m[-n_last_samples-1:-1]  # (n_last_samples, n_shots, n_pbits)
+        return samples.transpose(1, 0, 2).reshape(n_shots * n_last_samples, circuit.n_pbits)
 
+    samples = Parallel(n_jobs=n_jobs)(delayed(job)() for _ in range(n_shots))
     return np.array(samples).reshape((n_shots * n_last_samples, circuit.n_pbits))

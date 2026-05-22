@@ -25,7 +25,7 @@ class Solver:
     def random(self, n_pbits):
         return self._random_gen.random(n_pbits)
 
-    def solve(self, annealing_func):
+    def solve(self, c, annealing_func=None, n_shots=1):
         raise NotImplementedError()
 
     def copy(self):
