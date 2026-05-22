@@ -37,7 +37,7 @@ city_graph *= -1
 circuit = TSP(city_graph=city_graph, tsp_modifier=0.33)
 
 # Simulated Annealing Schedule
-solver = CaSuDaSolver(Nt=int(1e5), dt=1 / (2 * len(city_graph)), i0=0, expected_mean=0, seed=None)
+solver = CaSuDaSolver(Nt=int(1e5), dt=1 / (2 * len(city_graph)), i0=0, expected_mean=0, seed=None, device="cpu")
 
 # Increase n_shots to have more reliable results
 n_shots = 200

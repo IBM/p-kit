@@ -18,7 +18,7 @@ def extract_tsp_path(sample_matrix):
         path.append(city)
     return path
 
-def tsp_hist(samples, city_graph):  
+def tsp_hist(samples, city_graph):
     hist = {}
     for i in range(len(samples)):
         s = samples[i, :].reshape((len(city_graph), len(city_graph[0])))
