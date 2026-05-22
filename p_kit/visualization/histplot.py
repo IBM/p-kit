@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def histplot(output):
+def histplot(output, decode=m_to_string):
     ret = {}
 
     for m in output:
-        s = m_to_string(m)
+        s = str(decode(m))
         if s in ret:
             ret[s] = ret[s] + 1
         else:
