@@ -1,5 +1,8 @@
-from docplex.mp.model import Model
-from p_kit.library.docplex_optimizer import DocplexOptimizer
+try:
+    from docplex.mp.model import Model
+    from p_kit.library.docplex_optimizer import DocplexOptimizer
+except ImportError:
+    raise SystemExit(0)  # skip gracefully if docplex is not installed
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.solver.annealing import constant, execute
 from p_kit.visualization.histplot import histplot

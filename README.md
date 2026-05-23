@@ -123,4 +123,29 @@ class LogicCircuit:
         self.and_gate.output.connect(self.or_gate.input1)
 ```
 
+### Higher-level Library
+
+`p_kit.library` provides ready-made circuits for common problem types.
+
+| Class | Purpose | Extra p-bits mean… |
+|---|---|---|
+| `TSP` | Travelling Salesman Problem | one p-bit per (city, order) pair |
+| `PolyOptimizer` | Classical polynomial minimisation (QUBO) | binary bits for integer precision |
+| `TransverseFieldIsing` | Quantum-inspired annealing (TFIM emulation) | Trotter replicas in imaginary time |
+
+Both `PolyOptimizer` and `TransverseFieldIsing` can target the same QUBO/Ising problems, but they correspond to different parts of QAOA:
+
+- **`PolyOptimizer`** encodes only the QAOA *cost Hamiltonian* H_C = -Σ J_ij σ^z_i σ^z_j. It uses pure Boltzmann sampling to find the minimum — equivalent to QAOA with zero mixer strength (the classical baseline).
+
+- **`TransverseFieldIsing`** emulates the full QAOA *dynamics*: the cost Hamiltonian (intra-replica couplings) plus the mixer Hamiltonian H_B = -Γ Σ σ^x_i (inter-replica Trotter couplings). The `gamma` parameter is the QAOA mixer strength and `n_replicas` corresponds to the number of QAOA layers. This is what p-kit calls **PAOA** — a probabilistic emulation of QAOA for stoquastic Hamiltonians, running at room temperature on classical hardware (see [Camsari et al., 2019](https://arxiv.org/abs/1809.04028), Fig. 9).
+
+To use `TransverseFieldIsing` with a QUBO problem:
+
+```python
+from p_kit.library.quantum import TransverseFieldIsing
+
+# Q is your (n, n) QUBO matrix
+circuit = TransverseFieldIsing.from_qubo(Q, gamma=0.5, beta=2.0, n_replicas=20)
+```
+
 For more information, visit our [documentation](https://github.com/IBM/p-kit/wiki).
