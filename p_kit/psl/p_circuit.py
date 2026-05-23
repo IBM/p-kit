@@ -36,12 +36,16 @@ class PCircuit:
 
     def _initialize_ports(self, port_attrs: Dict[str, Any]) -> None:
         """Initialize ports from attributes dictionary."""
-        # Create port index mapping
-        port_indices = {name: idx for idx, name in enumerate(port_attrs.keys())}
+        # Build cumulative index mapping respecting port widths
+        port_indices = {}
+        idx = 0
+        for name, port in port_attrs.items():
+            port_indices[name] = idx
+            idx += port.width
 
         # Set up each port
         for name, port in port_attrs.items():
-            new_port = Port(name=port.name)
+            new_port = Port(name=port.name, width=port.width)
             new_port.circuit = self
             new_port.index = port_indices[name]
             # Check ports name doesn't conflict with reserved attributes.

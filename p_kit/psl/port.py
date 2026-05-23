@@ -17,10 +17,10 @@ class ConnectionStrategy(ABC):
         port_count: int,
         port_to_global: Dict["Port", int],
     ) -> int:
-        # Each port gets unique index
+        # Each port gets unique index; allocate width consecutive slots
         source_port.global_index = port_count
         port_to_global[source_port] = port_count
-        return port_count + 1
+        return port_count + source_port.width
 
     @abstractmethod
     def synthesize_connection_sparse(
@@ -58,7 +58,7 @@ class NoCopyConnection(ConnectionStrategy):
         target_port.global_index = port_count
         port_to_global[source_port] = port_count
         port_to_global[target_port] = port_count
-        return port_count + 1
+        return port_count + source_port.width
 
     def synthesize_connection_sparse(
         self, source_idx: int, target_idx: int, J_global: Dict[int, Dict[int, float]]
@@ -152,7 +152,15 @@ class Port:
     circuit: Any = None
     index: int = None
     global_index: int = None
+    width: int = 1
     _connections: Dict = field(default_factory=dict)
+
+    @property
+    def global_indices(self) -> List[int]:
+        """Returns all global indices covered by this port (one per bit)."""
+        if self.global_index is None:
+            return []
+        return list(range(self.global_index, self.global_index + self.width))
 
     def __hash__(self):
         """
@@ -189,6 +197,10 @@ class Port:
             raise ValueError("Both ports must be bound to circuits")
         if self.index is None or other_port.index is None:
             raise ValueError("Both ports must have assigned indices")
+        if self.width != other_port.width:
+            raise ValueError(
+                f"Cannot connect ports of different widths: {self.width} vs {other_port.width}"
+            )
 
         if isinstance(strategy, type):
             self._connection_strategy = strategy()

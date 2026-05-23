@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from p_kit import psl
-from p_kit.psl.gates import ANDGate
+from p_kit.psl.gates import ANDGate, ORGate
 
 
 @pytest.fixture
@@ -217,3 +217,164 @@ def test_invalid_connection_raises_error():
         port1 = psl.Port("test1")
         port2 = psl.Port("test2")
         port1.connect(port2, psl.NoCopyConnection)
+
+
+# ── Feature: Ports with width ─────────────────────────────────────────────────
+
+@psl.pcircuit(n_pbits=5)
+class WideBusGate:
+    """A gate with a 4-bit input bus and a 1-bit output."""
+    data_in = psl.Port("data_in", width=4)
+    flag = psl.Port("flag", width=1)
+
+    J = np.zeros((5, 5))
+    h = np.zeros((5, 1))
+
+
+def test_port_width_field():
+    gate = WideBusGate()
+    assert gate.data_in.width == 4
+    assert gate.flag.width == 1
+
+
+def test_port_global_indices_after_synthesis():
+    @psl.module
+    class WideCircuit:
+        def __init__(self):
+            self.gate = WideBusGate()
+
+    wc = WideCircuit()
+    wc.synthesize(format="dense")
+    gate = wc.gate
+    assert len(gate.data_in.global_indices) == 4
+    gi = gate.data_in.global_indices
+    assert gi == list(range(gi[0], gi[0] + 4))
+
+
+def test_wide_port_connection_width_mismatch_raises():
+    gate1 = ANDGate()
+    gate2 = ANDGate()
+    # output (width=1) vs input1 (width=1) — OK, but let's try width mismatch via Port directly
+    with pytest.raises(ValueError, match="different widths"):
+        @psl.module
+        class Mismatch:
+            def __init__(self):
+                self.g1 = WideBusGate()
+                self.g2 = ANDGate()
+                # data_in (width=4) vs input1 (width=1)
+                self.g1.data_in.connect(self.g2.input1, psl.NoCopyConnection)
+        Mismatch()
+
+
+def test_wide_port_index_offset():
+    """data_in starts at local index 0, flag at local index 4."""
+    gate = WideBusGate()
+    assert gate.data_in.index == 0
+    assert gate.flag.index == 4
+
+
+# ── Feature: Modules with Ports ───────────────────────────────────────────────
+
+@psl.module
+class AndWrapper:
+    """Module that exposes the AND gate's output as a named interface port."""
+    result = psl.Port("result")
+
+    def __init__(self):
+        self.gate = ANDGate()
+        self.result.connect(self.gate.output, psl.NoCopyConnection)
+
+
+def test_module_port_shares_global_index():
+    aw = AndWrapper()
+    aw.synthesize(format="dense")
+    assert aw.result.global_index == aw.gate.output.global_index
+
+
+def test_module_port_in_synthesis_shape():
+    aw = AndWrapper()
+    J, h = aw.synthesize(format="dense")
+    # AND gate has 3 p-bits; result shares output's index → still 3 unique indices
+    assert J.shape == (3, 3)
+    assert h.shape == (3, 1)
+
+
+def test_module_with_port_connected_to_another_gate():
+    # Connect via internal gate port; the NoCopy propagation carries the shared
+    # index through the chain: result(0) == gate.output(0) == gate2.input1(0)
+    @psl.module
+    class Chain:
+        def __init__(self):
+            self.wrapper = AndWrapper()
+            self.gate2 = ANDGate()
+            self.wrapper.gate.output.connect(self.gate2.input1, psl.NoCopyConnection)
+
+    chain = Chain()
+    J, h = chain.synthesize(format="dense")
+    # 3 (AND in wrapper) + 3 (gate2) - 1 (shared output/input1) = 5
+    assert J.shape == (5, 5)
+    # All three ports collapse to the same global index
+    assert chain.wrapper.result.global_index == chain.wrapper.gate.output.global_index
+    assert chain.wrapper.gate.output.global_index == chain.gate2.input1.global_index
+
+
+# ── Feature: Recursive Synthesis ──────────────────────────────────────────────
+
+@psl.module
+class TwoAnds:
+    """Two AND gates chained; output of first feeds input of second."""
+    def __init__(self):
+        self.and1 = ANDGate()
+        self.and2 = ANDGate()
+        self.and1.output.connect(self.and2.input1, psl.NoCopyConnection)
+
+
+def test_recursive_synthesis_flat():
+    """Sub-module instances are flattened into the parent context."""
+    @psl.module
+    class FourAnds:
+        def __init__(self):
+            self.pair1 = TwoAnds()
+            self.pair2 = TwoAnds()
+
+    fa = FourAnds()
+    J, h = fa.synthesize(format="dense")
+    # pair1: 3+3-1 = 5 unique pbits; pair2: 5 unique pbits; no cross-connection → 10 total
+    assert J.shape == (10, 10)
+    assert h.shape == (10, 1)
+
+
+def test_recursive_synthesis_preserves_couplings():
+    """Internal couplings of sub-modules are present in the global J matrix."""
+    @psl.module
+    class Nested:
+        def __init__(self):
+            self.sub = TwoAnds()
+
+    n = Nested()
+    J_nested, _ = n.synthesize(format="dense")
+
+    standalone = TwoAnds()
+    J_standalone, _ = standalone.synthesize(format="dense")
+
+    assert J_nested.shape == J_standalone.shape
+    assert np.allclose(J_nested, J_standalone)
+
+
+def test_recursive_synthesis_sparse_dense_equivalence():
+    @psl.module
+    class Nested:
+        def __init__(self):
+            self.sub = TwoAnds()
+
+    n = Nested()
+    J_sparse, h_sparse = n.synthesize(format="sparse")
+    J_dense, h_dense = n.synthesize(format="dense")
+
+    size = J_dense.shape[0]
+    J_from_sparse = np.zeros((size, size))
+    for i, row in J_sparse.items():
+        for j, w in row.items():
+            J_from_sparse[i, j] = w
+
+    assert np.allclose(J_dense, J_from_sparse)
