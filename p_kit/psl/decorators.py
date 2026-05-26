@@ -15,6 +15,14 @@ def module(cls: Type[T]) -> Type[T]:
     and synthesizing their combined matrices. The synthesize method supports both
     sparse and dense matrix formats.
 
+    Modules may declare Port attributes at class level to expose an external
+    interface. These ports can be connected to internal circuit ports and
+    participate in synthesis via NoCopyConnection (sharing global indices).
+
+    Modules may also contain other @module instances as attributes; their
+    registered instances are flattened into the parent context automatically
+    (recursive synthesis).
+
     Args:
         cls (Type[T]): Class to be decorated
 
@@ -24,34 +32,53 @@ def module(cls: Type[T]) -> Type[T]:
     Example:
         >>> @module
         >>> class MyCircuit:
+        >>>     out = Port("out")
         >>>     def __init__(self):
         >>>         self.gate1 = ANDGate()
-        >>>         self.gate2 = ANDGate()
+        >>>         self.out.connect(self.gate1.output, NoCopyConnection)
         >>>
-        >>> # Create instance and synthesize matrices
         >>> circuit = MyCircuit()
-        >>>
-        >>> # Get sparse representation (default)
         >>> J_sparse, h_sparse = circuit.synthesize()
-        >>>
-        >>> # Get dense matrix representation
         >>> J_dense, h_dense = circuit.synthesize(format='dense')
     """
-    context = ModuleContext()
+    # Detect Port attributes declared on the class (module interface ports)
+    port_attrs = {
+        name: attr for name, attr in cls.__dict__.items() if isinstance(attr, Port)
+    }
 
     original_new = cls.__new__
     original_init = cls.__init__
 
-    def __new__(cls, *args, **kwargs):
-        instance = original_new(cls)
-        instance._context = context
+    def __new__(cls_ref, *args, **kwargs):
+        instance = original_new(cls_ref)
+        instance._context = ModuleContext()  # per-instance context
         return instance
 
     def __init__(self, *args, **kwargs):
+        # Initialize module-level interface ports before original __init__ runs
+        # so that user code in __init__ can connect them to internal gates
+        if port_attrs:
+            idx = 0
+            for name, port in port_attrs.items():
+                new_port = Port(name=port.name, width=port.width)
+                new_port.circuit = self
+                new_port.index = idx
+                idx += port.width
+                setattr(self, name, new_port)
+            # Register the module itself so its interface ports participate
+            # in global index assignment before internal gate ports
+            self._context.register_instance(self)
+
         original_init(self, *args, **kwargs)
+
         for attr_name, attr_value in vars(self).items():
+            if attr_value is self:
+                continue
             if hasattr(attr_value, "n_pbits"):
                 self._context.register_instance(attr_value)
+            elif hasattr(attr_value, "_context"):
+                # Sub-module: flatten its instances into this context
+                self._context.register_submodule(attr_value)
 
     def synthesize(self, format: str = "sparse") -> Union[
         Tuple[Dict[int, Dict[int, float]], Dict[int, float]],

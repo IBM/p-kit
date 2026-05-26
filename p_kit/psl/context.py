@@ -11,6 +11,12 @@ class ModuleContext:
     def register_instance(self, instance: Any):
         self.instances.append(instance)
 
+    def register_submodule(self, submodule: Any):
+        """Flatten a sub-module's instances into this context."""
+        for instance in submodule._context.instances:
+            if instance not in self.instances:
+                self.instances.append(instance)
+
     def reset_indices(self):
         """Reset all global indices before synthesis."""
         for instance in self.instances:
@@ -23,20 +29,24 @@ class ModuleContext:
         port_count = 0
         for instance in self.instances:
             for port in self.get_circuit_ports(instance):
-                if (
-                    hasattr(port, "_connection_strategy")
-                    and getattr(port, "_connection_strategy")
-                    and port.global_index is None
-                ):
-                    # Let the strategy handle index assignment
-                    port_count = port._connection_strategy.assign_global_index(
-                        port, port._connected_port, port_count, self.port_to_global
-                    )
+                strategy = getattr(port, "_connection_strategy", None)
+                if strategy:
+                    if port.global_index is None:
+                        port_count = strategy.assign_global_index(
+                            port, port._connected_port, port_count, self.port_to_global
+                        )
+                    elif (
+                        isinstance(strategy, NoCopyConnection)
+                        and port._connected_port.global_index is None
+                    ):
+                        # Port already indexed by a prior NoCopy; propagate index down the chain
+                        target = port._connected_port
+                        target.global_index = port.global_index
+                        self.port_to_global[target] = port.global_index
                 elif port.global_index is None:
-                    # Unconnected ports get their own index
                     port.global_index = port_count
                     self.port_to_global[port] = port_count
-                    port_count += 1
+                    port_count += port.width
         return port_count
 
     def get_circuit_ports(self, instance) -> List[Port]:
@@ -63,7 +73,6 @@ class ModuleContext:
         self.reset_indices()
         total_ports = self.assign_global_indices()
 
-        # Initialize data structures
         J_global = {} if format == "sparse" else np.zeros((total_ports, total_ports))
         h_global = {} if format == "sparse" else np.zeros((total_ports, 1))
 
@@ -75,45 +84,48 @@ class ModuleContext:
     def _process_instance_matrices(self, J_global, h_global, format: str):
         """Process internal J and h matrices of instances."""
         for instance in self.instances:
+            # Skip module instances that have no J/h (they are port containers only)
+            if not hasattr(instance, "J") or not hasattr(instance, "h"):
+                continue
             circuit_ports = self.get_circuit_ports(instance)
             for port1 in circuit_ports:
-                gi = port1.global_index
-                if gi is not None:
-                    # Add bias
-                    if instance.h is not None and port1.index < instance.h.shape[0]:
+                if port1.global_index is None:
+                    continue
+                for bit in range(port1.width):
+                    gi = port1.global_index + bit
+                    local_idx = port1.index + bit
+                    if instance.h is not None and local_idx < instance.h.shape[0]:
+                        val = float(instance.h.flat[local_idx])
                         if format == "sparse":
-                            if gi in h_global.keys():
-                                h_global[gi] += float(instance.h[port1.index])
-                            else:
-                                h_global[gi] = float(instance.h[port1.index])
+                            h_global[gi] = h_global.get(gi, 0.0) + val
                         else:
-                            h_global[gi, 0] += instance.h[port1.index]
-
-                    # Add couplings
+                            h_global[gi, 0] += val
                     self._add_instance_couplings(
-                        instance, port1, gi, circuit_ports, J_global, format
+                        instance, local_idx, gi, circuit_ports, J_global, format
                     )
 
     def _add_instance_couplings(
-        self, instance, port1, gi, circuit_ports, J_global, format
+        self, instance, local_idx, gi, circuit_ports, J_global, format
     ):
-        """Add coupling terms from instance J matrix."""
+        """Add coupling terms from instance J matrix for one source bit."""
         for port2 in circuit_ports:
-            gj = port2.global_index
-            if (
-                gj is not None
-                and gi != gj
-                and instance.J is not None
-                and port1.index < instance.J.shape[0]
-                and port2.index < instance.J.shape[1]
-            ):
-
-                weight = instance.J[port1.index, port2.index]
-                if weight != 0:  # Only store non-zero weights
+            if port2.global_index is None:
+                continue
+            for bit2 in range(port2.width):
+                gj = port2.global_index + bit2
+                local_idx2 = port2.index + bit2
+                if gi == gj:
+                    continue
+                if (
+                    instance.J is None
+                    or local_idx >= instance.J.shape[0]
+                    or local_idx2 >= instance.J.shape[1]
+                ):
+                    continue
+                weight = instance.J[local_idx, local_idx2]
+                if weight != 0:
                     if format == "sparse":
-                        if gi not in J_global:
-                            J_global[gi] = {}
-                        J_global[gi][gj] = float(weight)
+                        J_global.setdefault(gi, {})[gj] = float(weight)
                     else:
                         J_global[gi, gj] = weight
 
@@ -128,7 +140,10 @@ class ModuleContext:
                 ):
                     other_port = port._connected_port
                     if other_port.global_index is not None:
-                        # Let the strategy handle matrix updates
-                        port._connection_strategy.synthesize_connection(
-                            port.global_index, other_port.global_index, J_global
-                        )
+                        for bit in range(port.width):
+                            port._connection_strategy.synthesize_connection(
+                                port.global_index + bit,
+                                other_port.global_index + bit,
+                                J_global,
+                                format,
+                            )
