@@ -14,7 +14,7 @@ class CaSuDaSolver(Solver):
         n_pbits = c.n_pbits
 
         J = xp.asarray(c.J)
-        h = xp.asarray(c.h)
+        h = xp.asarray(c.h).flatten()  # Ensure h is 1D for proper broadcasting
         threshold = float(np.arctanh(self.expected_mean))
 
         # m is (n_shots, n_pbits) — works for n_shots=1 too
