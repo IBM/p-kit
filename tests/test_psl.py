@@ -378,3 +378,135 @@ def test_recursive_synthesis_sparse_dense_equivalence():
             J_from_sparse[i, j] = w
 
     assert np.allclose(J_dense, J_from_sparse)
+
+
+
+# ── XOR Gate Tests ────────────────────────────────────────────────────────────
+
+def test_xor_gate_structure():
+    """Test XOR gate has correct structure."""
+    from p_kit.psl.gates import XORGate
+    
+    gate = XORGate()
+    assert gate.input1.width == 1
+    assert gate.input2.width == 1
+    assert gate.output.width == 1
+    assert gate.aux.width == 1
+    assert gate.J.shape == (4, 4)
+    assert gate.h.shape == (4, 1)
+
+
+def test_xor_gate_truth_table():
+    """Test XOR gate produces correct truth table with high i0."""
+    from p_kit.psl.gates import XORGate
+    from p_kit.solver.csd_solver import CaSuDaSolver
+    
+    gate = XORGate()
+    solver = CaSuDaSolver(Nt=5000, dt=0.1667, i0=0.95, seed=42)
+    
+    test_cases = [
+        ([-1, -1], -1),  # 0 XOR 0 = 0
+        ([-1, 1], 1),    # 0 XOR 1 = 1
+        ([1, -1], 1),    # 1 XOR 0 = 1
+        ([1, 1], -1),    # 1 XOR 1 = 0
+    ]
+    
+    for inputs, expected_output in test_cases:
+        gate.h[0] = inputs[0] * 10
+        gate.h[1] = inputs[1] * 10
+        _, output, _ = solver.solve(gate)
+        
+        # Output is at index 2 (order: input1, input2, output, aux)
+        output_states = output[:, 2]
+        most_common = 1 if np.mean(output_states) > 0 else -1
+        assert most_common == expected_output, \
+            f"XOR({inputs[0]}, {inputs[1]}) expected {expected_output}, got {most_common}"
+
+
+# ── XNOR Gate Tests ───────────────────────────────────────────────────────────
+
+def test_xnor_gate_structure():
+    """Test XNOR gate has correct structure."""
+    from p_kit.psl.gates import XNORGate
+    
+    gate = XNORGate()
+    assert gate.input1.width == 1
+    assert gate.input2.width == 1
+    assert gate.output.width == 1
+    assert gate.aux.width == 1
+    assert gate.J.shape == (4, 4)
+    assert gate.h.shape == (4, 1)
+
+
+def test_xnor_gate_truth_table():
+    """Test XNOR gate produces correct truth table with high i0."""
+    from p_kit.psl.gates import XNORGate
+    from p_kit.solver.csd_solver import CaSuDaSolver
+    
+    gate = XNORGate()
+    solver = CaSuDaSolver(Nt=5000, dt=0.1667, i0=0.95, seed=42)
+    
+    test_cases = [
+        ([-1, -1], 1),   # 0 XNOR 0 = 1
+        ([-1, 1], -1),   # 0 XNOR 1 = 0
+        ([1, -1], -1),   # 1 XNOR 0 = 0
+        ([1, 1], 1),     # 1 XNOR 1 = 1
+    ]
+    
+    for inputs, expected_output in test_cases:
+        gate.h[0] = inputs[0] * 10
+        gate.h[1] = inputs[1] * 10
+        _, output, _ = solver.solve(gate)
+        
+        # Output is at index 2 (order: input1, input2, output, aux)
+        output_states = output[:, 2]
+        most_common = 1 if np.mean(output_states) > 0 else -1
+        assert most_common == expected_output, \
+            f"XNOR({inputs[0]}, {inputs[1]}) expected {expected_output}, got {most_common}"
+
+
+# ── Half Adder Tests ──────────────────────────────────────────────────────────
+
+def test_half_adder_structure():
+    """Test Half Adder has correct structure."""
+    from p_kit.psl.gates import HalfAdder
+    
+    gate = HalfAdder()
+    assert gate.input1.width == 1
+    assert gate.input2.width == 1
+    assert gate.sumout.width == 1
+    assert gate.carryout.width == 1
+    assert gate.J.shape == (4, 4)
+    assert gate.h.shape == (4, 1)
+
+
+def test_half_adder_truth_table():
+    """Test Half Adder produces correct sum and carry outputs."""
+    from p_kit.psl.gates import HalfAdder
+    from p_kit.solver.csd_solver import CaSuDaSolver
+    
+    gate = HalfAdder()
+    solver = CaSuDaSolver(Nt=5000, dt=0.1667, i0=0.95, seed=42)
+    
+    test_cases = [
+        ([-1, -1], -1, -1),
+        ([-1, 1], 1, -1),
+        ([1, -1], 1, -1),
+        ([1, 1], -1, 1),
+    ]
+    
+    for inputs, expected_sum, expected_carry in test_cases:
+        gate.h[0] = inputs[0] * 10
+        gate.h[1] = inputs[1] * 10
+        _, output, _ = solver.solve(gate)
+        
+        sum_states = output[:, 2]
+        carry_states = output[:, 3]
+        
+        sum_result = 1 if np.mean(sum_states) > 0 else -1
+        carry_result = 1 if np.mean(carry_states) > 0 else -1
+        
+        assert sum_result == expected_sum
+        assert carry_result == expected_carry
+
+
