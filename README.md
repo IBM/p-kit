@@ -27,12 +27,17 @@ Please check the [wiki](https://github.com/IBM/p-kit/wiki) for more information 
 
 ## Install
 
-There is no official release at the moment. Only dev version is available.
-Follow these steps:
+```bash
+pip install git+https://github.com/IBM/p-kit.git
+```
 
-1. Clone the repo locally
-2. Set up a Python environment (we recommend Anaconda for example). We support python 3.10 and 3.11.
-3. Run `pip install .` and `pip install .[tests]` (for visualization and testing).
+For visualization and testing dependencies:
+
+```bash
+pip install "git+https://github.com/IBM/p-kit.git#egg=p-kit[tests]"
+```
+
+We support Python 3.10 and 3.11.
 
 ## Getting Started
 
