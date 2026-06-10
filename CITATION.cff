@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+title: p-kit
+message: "If you use this software, please cite it as below."
+type: software
+version: 0.1.0
+license: BSD-3-Clause
+repository-code: https://github.com/IBM/p-kit
+url: https://github.com/IBM/p-kit/wiki
+abstract: >-
+  p-kit is a Python library for simulating probabilistic circuits using
+  p-bits that fluctuate between -1 and +1. It implements two frameworks:
+  PSL (Probabilistic Spin Logic) for invertible classical logic via Gibbs
+  sampling, and PAOA (Probabilistic Approximate Optimization Algorithms)
+  as a probabilistic analog of QAOA for combinatorial optimization.
+authors:
+  - family-names: Cattan
+    given-names: Gregoire
+    email: gregoire.cattan@ibm.com
+    affiliation: IBM
+  - family-names: Pluck
+    given-names: Thomas
+    email: thomas.pluck.2025@mumail.ie
+  - family-names: Singh
+    given-names: Amit
+    email: amit60018@gmail.com
+  - family-names: Movsumzada
+    given-names: Ulvi
+    email: ulvi.movsumzada@ibm.com
+    affiliation: IBM
+  - family-names: Andreev
+    given-names: Anton
+    email: andreev.anton@gipsa-lab.grenoble-inp.fr
+    affiliation: GIPSA-lab
+keywords:
+  - probabilistic computing
+  - p-bits
+  - probabilistic spin logic
+  - QAOA
+  - combinatorial optimization
+  - Gibbs sampling
