@@ -8,7 +8,7 @@ class CaSuDaSolver(Solver):
     # K. Y. Camsari, B. M. Sutton, and S. Datta, 'p-bits for probabilistic spin logic', Applied Physics Reviews, vol. 6, no. 1, p. 011305, Mar. 2019, doi: 10.1063/1.5055860.
 
     def solve(self, c: PCircuit, annealing_func=constant, n_shots=1,
-              bias_func=None, return_filtered=False):
+              bias_func=None, return_filtered=False, initial_state=None):
         """Run the CSD p-bit sampler.
 
         Parameters
@@ -25,6 +25,9 @@ class CaSuDaSolver(Solver):
             When True, append the full ``m_filt`` trajectory to the return so
             callers can read the graded state / higher-moment statistics. The
             default return contract is unchanged.
+        initial_state : array-like, optional
+            Initial +/-1 state for ``m``, tiled across shots. When ``None``
+            (default) ``m`` is initialized randomly, as before.
 
         Returns
         -------
@@ -50,7 +53,16 @@ class CaSuDaSolver(Solver):
         all_I = xp.zeros((self.Nt, n_pbits))
         all_mfilt = xp.zeros((self.Nt, n_shots, n_pbits))
         E = xp.zeros(self.Nt)
-        m = xp.sign(0.5 - self.random((n_shots, n_pbits)))
+        if initial_state is None:
+            m = xp.sign(0.5 - self.random((n_shots, n_pbits)))
+        else:
+            state = xp.asarray(initial_state)
+            if state.size != n_pbits:
+                raise ValueError(f"initial_state must contain {n_pbits} values")
+            state = state.reshape(n_pbits)
+            if not bool(xp.all((state == -1) | (state == 1))):
+                raise ValueError("initial_state must contain only -1 or +1")
+            m = xp.tile(state, (n_shots, 1))
         # Filtered companion state (leaky integrator). Holds step (run-1) when
         # bias_func is evaluated, giving the hook temporal memory of the past.
         m_filt = xp.zeros((n_shots, n_pbits))

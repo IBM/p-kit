@@ -34,6 +34,12 @@ Follow these steps:
 2. Set up a Python environment (we recommend Anaconda for example). We support python 3.10 and 3.11.
 3. Run `pip install .` and `pip install .[tests]` (for visualization and testing).
 
+Alternatively, just run
+
+```bash
+pip install git+https://github.com/IBM/p-kit.git
+```
+
 ## Getting Started
 
 Create a circuit using the new decorator-based API:
