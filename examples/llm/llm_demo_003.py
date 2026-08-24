@@ -20,7 +20,7 @@ Results
        GPT     103488   0.829    2.294    2.21s
 
 The p-kit model reaches 79.3% accuracy vs 82.9% for the GPT baseline.
-It uses 22,176 vs 103,488 trainable parameters, about 4.7x fewer.
+The p-kit model uses 22,176 vs 103,488 trainable parameters, about 4.7x fewer than GPT.
 There is no backpropagation through the p-bit reservoir.
 Training time is similar in this small experiment.
 """
