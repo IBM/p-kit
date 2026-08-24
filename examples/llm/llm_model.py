@@ -460,3 +460,52 @@ class SparsePBitLM:
             self.n_connections
             / self.circuit.J.size
         )
+    
+class SparsePBitLMTemporalMemory(SparsePBitLM):
+    """
+    SparsePBitLM with explicit temporal memory.
+
+    The readout receives several consecutive reservoir states instead of
+    only the current one:
+
+        token -> p-bit reservoir -> [s(t), s(t-1), ...] -> readout
+
+    This tests whether additional temporal context improves language modeling
+    without training the recurrent p-bit reservoir itself.
+    """
+
+    def __init__(self, *args, history_size=4, **kwargs):
+        self.history_size = history_size
+        super().__init__(*args, **kwargs)
+        self._reset_history()
+
+    def _reset_history(self):
+        self.state_history = [
+            np.zeros(self.n_pbits, dtype=float)
+            for _ in range(self.history_size)
+        ]
+
+    def reset(self):
+        super().reset()
+        if hasattr(self, "history_size") and hasattr(self, "n_pbits"):
+            self._reset_history()
+
+    def step(self, token_id, sweeps=1):
+        state = super().step(token_id, sweeps=sweeps)
+        self.state_history = [state.copy()] + self.state_history[:-1]
+        return state
+
+    def _features(self, token_id, sweeps=1):
+        self.step(token_id, sweeps=sweeps)
+        relu = self.relu_features()
+        memory = np.concatenate(self.state_history)
+    
+        token_feature = np.zeros(len(self.char_to_id))
+        token_feature[token_id] = 1.0
+    
+        return np.concatenate([
+            memory,
+            relu,
+            token_feature,
+            [1.0],
+        ])
