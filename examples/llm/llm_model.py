@@ -4,11 +4,15 @@ Sparse p-bit reservoir language model - a proof of concept.
 Reservoir computing: a recurrent network with mostly fixed internal connections
 that converts the input sequence into a rich dynamic state.
 
-This is a small demo model. The recurrent state is made of stochastic p-bits
+This is a small demo model. The recurrent state is made of stochastic p-bits 
 with sparse pairwise couplings:
 
     P(s_i = +1) = (1 + tanh(beta * I_i)) / 2
     I_i = sum_j J_ij s_j + h_i(token) + memory_scale * s_i(previous)
+
+By default each solver call starts from a new stochastic state. Optionally,
+CaSuDaSolver can continue from the previous reservoir state using
+use_initial_state=True.
 
 The p-bit reservoir is sparse and thus hardware-friendly. A conventional linear
 readout is trained with ridge regression to predict the next character.
@@ -38,10 +42,6 @@ NOTES:
   - Similar to an RNN, more specifically an Echo State Network / reservoir computer:
   - Training is much simpler and cheaper because there is no backpropagation through the recurrent network.
 
-Currently a workaround is used for the recurrent memory: feed the previous 
-reservoir state back through h because CaSuDaSolver cannot yet start from a 
-user-provided initial state. Once https://github.com/IBM/p-kit/issues/117 is
-implemented, this can be replaced by passing self.state directly to the solver.
 """
 
 from dataclasses import dataclass
@@ -70,6 +70,7 @@ class SparsePBitLM:
         memory_scale=0.35,
         reservoir_steps=10,
         relu_steps=10,
+        use_initial_state=False,
         seed=1,
     ):
         self.n_pbits = int(n_pbits)
@@ -77,6 +78,7 @@ class SparsePBitLM:
         self.input_fanout = int(input_fanout)
         self.input_scale = float(input_scale)
         self.memory_scale = float(memory_scale)
+        self.use_initial_state = use_initial_state
 
         self.rng = np.random.default_rng(seed)
 
@@ -216,35 +218,20 @@ class SparsePBitLM:
             size=self.n_pbits,
         )
 
-    def step(
-        self,
-        token_id,
-        sweeps=1,
-    ):
-        """
-        Advance the recurrent reservoir using the p-kit solver.
-        """
-
+    def step(self, token_id, sweeps=1):
+        
         for _ in range(sweeps):
-
-            # Token input + recurrent state feedback.
-            #
-            # The feedback through h is temporary until p-kit can
-            # initialize CaSuDaSolver directly from self.state.
             self.circuit.h = (
                 self.token_h[token_id]
                 + self.memory_scale * self.state
             )
-
-            _, trajectory, _ = (
-                self.reservoir_solver.solve(
-                    self.circuit
-                )
+    
+            _, trajectory, _ = self.reservoir_solver.solve(
+                self.circuit,
+                initial_state=self.state if self.use_initial_state else None,
             )
-
-            self.state = (
-                trajectory[-1].astype(float)
-            )
+    
+            self.state = trajectory[-1].astype(float)
 
         return self.state
 
@@ -460,3 +447,52 @@ class SparsePBitLM:
             self.n_connections
             / self.circuit.J.size
         )
+    
+class SparsePBitLMTemporalMemory(SparsePBitLM):
+    """
+    SparsePBitLM with explicit temporal memory.
+
+    The readout receives several consecutive reservoir states instead of
+    only the current one:
+
+        token -> p-bit reservoir -> [s(t), s(t-1), ...] -> readout
+
+    This tests whether additional temporal context improves language modeling
+    without training the recurrent p-bit reservoir itself.
+    """
+
+    def __init__(self, *args, history_size=4, **kwargs):
+        self.history_size = history_size
+        super().__init__(*args, **kwargs)
+        self._reset_history()
+
+    def _reset_history(self):
+        self.state_history = [
+            np.zeros(self.n_pbits, dtype=float)
+            for _ in range(self.history_size)
+        ]
+
+    def reset(self):
+        super().reset()
+        if hasattr(self, "history_size") and hasattr(self, "n_pbits"):
+            self._reset_history()
+
+    def step(self, token_id, sweeps=1):
+        state = super().step(token_id, sweeps=sweeps)
+        self.state_history = [state.copy()] + self.state_history[:-1]
+        return state
+
+    def _features(self, token_id, sweeps=1):
+        self.step(token_id, sweeps=sweeps)
+        relu = self.relu_features()
+        memory = np.concatenate(self.state_history)
+    
+        token_feature = np.zeros(len(self.char_to_id))
+        token_feature[token_id] = 1.0
+    
+        return np.concatenate([
+            memory,
+            relu,
+            token_feature,
+            [1.0],
+        ])

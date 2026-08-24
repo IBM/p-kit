@@ -25,7 +25,7 @@ $$
 I_i = \sum_j J_{ij}s_j + h_i(\mathrm{token}) + \alpha s_i(\mathrm{previous})
 $$
 
-where $\alpha$ is the memory scale.
+where $\alpha$ controls the strength of the recurrent memory feedback.
 
 ## Workflow
 
@@ -50,8 +50,8 @@ The sparse p-bit architecture is intended to be hardware-friendly: the same mode
 
 # Future research
 
-* Scale the p-bit reservoir and study quality vs number of p-bits, sparse connections, and trainable parameters.
-* Add persistent solver state once supported, instead of feeding the previous state back through h.
+* Scale the p-bit reservoir and study quality vs number of p-bits, sparse connections, and trainable parameters
+* Add persistent solver state once supported, instead of feeding the previous state back through h - DONE (both are supported now)
 * Test a more p-kit-native hybrid architecture:
 
 `token => p-bit reservoir => p-kit ReLU / nonlinear p-bit blocks => probabilistic p-bit output layer => posterior next-token sampling`
