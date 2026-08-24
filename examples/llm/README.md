@@ -1,6 +1,6 @@
 # Objective
 
-Study if a LM (and later LLM) can be implemented over p-kit. 
+Study if a language model (and later LLM) can be implemented over p-kit. 
 
 Compared with a traditional Transformer LLM, a p-kit-based language model could have these potential advantages:
 * Sparse computation: fewer active connections than dense attention/MLP layers. 
@@ -11,9 +11,9 @@ Compared with a traditional Transformer LLM, a p-kit-based language model could 
 * No dependence on PyTorch/TensorFlow: simpler experimental stack and easier custom hardware mapping. 
 * Recurrent state by design: potentially efficient for sequential processing without full attention over all previous tokens. 
 
-# Current implemenation
+# Current implementation
 
-The current implementation is a proof-of-concept sparse p-bit reservoir language model.
+The current implementation is a proof-of-concept sparse p-bit [Echo State Network](https://en.wikipedia.org/wiki/Echo_state_network) / reservoir language model. The ESN/reservoir is a bit limited, but fits nicely with p-kit. It maps well to p-kit because the reservoir can be a fixed sparse stochastic p-bit network, while only a small readout is trained.
 
 The recurrent state is formed by stochastic p-bits with sparse pairwise couplings:
 
@@ -29,7 +29,7 @@ where $\alpha$ is the memory scale.
 
 ## Workflow
 
-character -> sparse stochastic p-bit reservoir -> p-kit ReLU circuit -> reservoir + ReLU features -> ridge-regression readout -> next-character probabilities
+`character -> sparse stochastic p-bit reservoir -> p-kit ReLU circuit -> reservoir + ReLU features -> ridge-regression readout -> next-character probabilities`
 
 Both the recurrent reservoir and ReLU block are represented as p-kit circuits and executed with the p-kit stochastic solver. Only the final linear readout is trained using NumPy ridge regression.
 
