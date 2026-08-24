@@ -17,13 +17,13 @@ The current implementation is a proof-of-concept sparse p-bit reservoir language
 
 The recurrent state is formed by stochastic p-bits with sparse pairwise couplings:
 
-[
+$$
 P(s_i = +1) = \frac{1 + \tanh(\beta I_i)}{2}
-]
+$$
 
-[
-I_i = \sum_j J_{ij}s_j + h_i(\text{token}) + \text{memory_scale},s_i(\text{previous})
-]
+$$
+I_i = \sum_j J_{ij}s_j + h_i(\text{token}) + \text{memory\_scale}\,s_i(\text{previous})
+$$
 
 Workflow
 character
@@ -43,3 +43,5 @@ Only the final readout weights are trained.
 No backpropagation through the recurrent network is required.
 
 The sparse p-bit architecture is intended to be hardware-friendly: the same model can currently be simulated in software and could later target dedicated p-bit hardware.
+
+# Next steps
