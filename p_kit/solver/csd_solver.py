@@ -25,9 +25,10 @@ class CaSuDaSolver(Solver):
         if initial_state is None:
             m = xp.sign(0.5 - self.random((n_shots, n_pbits)))
         else:
-            state = xp.asarray(initial_state).flatten()
-            if state.shape != (n_pbits,):
-                raise ValueError(f"initial_state must have shape ({n_pbits},)")
+            state = xp.asarray(initial_state)
+            if state.size != n_pbits:
+                raise ValueError(f"initial_state must contain {n_pbits} values")
+            state = state.reshape(n_pbits)
             if not bool(xp.all((state == -1) | (state == 1))):
                 raise ValueError("initial_state must contain only -1 or +1")
             m = xp.tile(state, (n_shots, 1))
