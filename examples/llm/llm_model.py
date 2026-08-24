@@ -30,6 +30,14 @@ This separation allows the same p-bit model to be currently simulated in
 software and in the future executed on dedicated p-bit hardware without 
 redesigning the model.
 
+NOTES:
+  - The p-bit reservoir is not trained: its J couplings are randomly generated and then fixed.
+  - The ReLU p-bit block is also fixed.
+  - Only the final readout weights are trained using ridge regression.
+  - input → fixed recurrent p-bit network → dynamic state → trained readout
+  - Similar to an RNN, more specifically an Echo State Network / reservoir computer:
+  - Training is much simpler and cheaper because there is no backpropagation through the recurrent network.
+
 Currently a workaround is used for the recurrent memory: feed the previous 
 reservoir state back through h because CaSuDaSolver cannot yet start from a 
 user-provided initial state. Once https://github.com/IBM/p-kit/issues/117 is
