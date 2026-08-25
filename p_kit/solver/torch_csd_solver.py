@@ -73,7 +73,8 @@ def _multi_kernel(m,J,h,anneal,rnd,dt,threshold):
 class TorchCaSuDaSolver(Solver):
     def __init__(
         self,Nt,dt,i0,expected_mean=0,seed=None,
-        device="cpu",dtype=torch.float32,compile=False,cache_J=False,
+        device="cpu",dtype=torch.float32,compile=False,
+        cache_J=False,tau=0.1,
     ):
         if device=="spyre":
             raise NotImplementedError("Spyre support is not enabled yet")
@@ -84,7 +85,7 @@ class TorchCaSuDaSolver(Solver):
         if device=="cuda" and not torch.cuda.is_available():
             raise RuntimeError("CUDA is not available")
 
-        super().__init__(Nt,dt,i0,expected_mean,seed,device="cpu")
+        super().__init__(Nt,dt,i0,expected_mean,seed,device="cpu",tau=tau)
 
         self.device=device
         self.dtype=dtype
@@ -221,6 +222,14 @@ class TorchCaSuDaSolver(Solver):
 
     def copy(self):
         return TorchCaSuDaSolver(
-            self.Nt,self.dt,self.i0,self.expected_mean,self.seed,
-            self.device,self.dtype,self.compile,False
+            Nt=self.Nt,
+            dt=self.dt,
+            i0=self.i0,
+            expected_mean=self.expected_mean,
+            seed=self.seed,
+            device=self.device,
+            dtype=self.dtype,
+            compile=self.compile,
+            cache_J=False,
+            tau=self.tau,
         )
