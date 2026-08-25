@@ -19,9 +19,9 @@ Best p-kit configuration:
   
 Results
                 Model  Trainable     Acc      PPL     Time
-     CaSuDaSolver CPU      22176   0.793   12.155    1.97s
-TorchCaSuDaSolver CPU      22176   0.756   12.125    9.24s
-              GPT CPU     103488   0.829    2.294    2.07s
+     CaSuDaSolver CPU      22176   0.793   12.155    1.98s
+TorchCaSuDaSolver CPU      22176   0.756   12.125   10.48s
+              GPT CPU     103488   0.829    2.294    2.43s
            
     TorchCaSuDaSolver is currently slower on CPU than CaSuDaSolver, but it 
     might get faster once we switch to a bigger p-kit LM and CUDA.
@@ -155,7 +155,7 @@ def main():
     results=[]
     
     add_pkit(results, "CaSuDaSolver CPU", CaSuDaSolver, "cpu")
-    add_pkit(results, "TorchCaSuDaSolver CPU", TorchCaSuDaSolver, "cpu", cache_J=True)
+    add_pkit(results, "TorchCaSuDaSolver CPU", TorchCaSuDaSolver, "cpu")
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:
@@ -166,7 +166,7 @@ def main():
     if TORCH_CUDA:
         add_pkit(
             results, "TorchCaSuDaSolver CUDA", TorchCaSuDaSolver, "cuda",
-            sync=torch.cuda.synchronize, cache_J=True, compile=True)
+            sync=torch.cuda.synchronize, compile=True)
         add_gpt(results, "GPT CUDA", "cuda")
 
     print("\nCUDA availability")
