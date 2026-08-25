@@ -20,6 +20,15 @@ NOTES:
     annealing backend.
   - PyTorch and NumPy solvers use different random generators, so stochastic
     trajectories and final results are not expected to be identical.
+    
+  - TorchCaSuDaSolver is not fully optimized for CUDA yet.
+    Although the solver kernels run on the selected Torch device, solve()
+    returns NumPy arrays for compatibility with the existing p-kit API.
+    This requires copying results from GPU to CPU after every solve.
+    For recurrent workloads such as the language-model reservoir, repeated
+    CPU<->GPU transfers can significantly reduce the benefit of CUDA.
+    A future device-native solve_torch() path could keep J, h, state and
+    intermediate results as Torch tensors on the accelerator.
 """
 
 import numpy as np
@@ -126,7 +135,10 @@ class TorchCaSuDaSolver(Solver):
         )
 
     @torch.inference_mode()
-    def solve(self,c:PCircuit,annealing_func=constant,n_shots=1,initial_state=None):
+    def solve(
+        self,c:PCircuit,annealing_func=constant,n_shots=1,
+        bias_func=None,return_filtered=False,initial_state=None
+    ):
         n=c.n_pbits
         J=self._get_J(c)
         h=torch.as_tensor(
@@ -156,20 +168,56 @@ class TorchCaSuDaSolver(Solver):
 
             if not valid:
                 raise ValueError("initial_state must contain only -1 or +1")
-
             m=state.repeat(n_shots,1) if n_shots>1 else state
 
-        rnd=self._random((self.Nt,)+shape)
+        # Fast existing path
+        if bias_func is None and not return_filtered:
+            rnd=self._random((self.Nt,)+shape)
+            if n_shots==1:
+                I,m,E=self._single(m,J,h,anneal,rnd,self.dt,threshold,self.i0)
+                return I.cpu().numpy(),m.cpu().numpy(),E.cpu().numpy()
+            return self._multi(
+                m,J,h,anneal,rnd,self.dt,threshold
+            ).cpu().numpy()
+
+        # Full CaSuDaSolver-compatible path
+        if n_shots==1:
+            m=m.unsqueeze(0)
+
+        m_filt=torch.zeros_like(m)
+        all_m=torch.empty((self.Nt,n_shots,n),dtype=self.dtype,device=self.torch_device)
+        all_I=torch.empty((self.Nt,n),dtype=self.dtype,device=self.torch_device)
+        all_mfilt=torch.empty_like(all_m)
+        E=torch.empty(self.Nt,dtype=self.dtype,device=self.torch_device)
+
+        for run in range(self.Nt):
+            h_eff=h if bias_func is None else torch.as_tensor(
+                bias_func(run,m,m_filt),dtype=self.dtype,device=self.torch_device
+            )
+            I=anneal[run]*(m@J+h_eff)
+            s=torch.exp(-self.dt*torch.exp(-m*(I+threshold)))
+            m=m*torch.sign(s-self._random((n_shots,n)))
+            m_filt=(1-self.tau)*m_filt+self.tau*m
+
+            all_m[run]=m
+            all_I[run]=I[0]
+            all_mfilt[run]=m_filt
+
+            h0=h if bias_func is None else torch.broadcast_to(h_eff,(n_shots,n))[0]
+            E[run]=self.i0*(torch.dot(m[0],h0)+.5*torch.dot(m[0]@J,m[0]))
+
+        all_I=all_I.cpu().numpy()
+        all_m=all_m.cpu().numpy()
+        all_mfilt=all_mfilt.cpu().numpy()
+        E=E.cpu().numpy()
 
         if n_shots==1:
-            I,m,E=self._single(
-                m,J,h,anneal,rnd,self.dt,threshold,self.i0
-            )
-            return I.cpu().numpy(),m.cpu().numpy(),E.cpu().numpy()
-
-        return self._multi(
-            m,J,h,anneal,rnd,self.dt,threshold
-        ).cpu().numpy()
+            if return_filtered:
+                return all_I,all_m[:,0,:],E,all_mfilt[:,0,:]
+            return all_I,all_m[:,0,:],E
+        if return_filtered:
+            return all_m,all_mfilt
+        return all_m
 
     def copy(self):
         return TorchCaSuDaSolver(
