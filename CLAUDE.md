@@ -43,7 +43,7 @@ The entry point is a **decorator API** in `p_kit/psl/decorators.py`:
 
 **`CaSuDaSolver`**: Primary solver. At each step, computes input currents `I = i0 * (m @ J + h)`, then updates magnetization `m` stochastically. Returns `(all_I, all_m, E)` — full `Nt × n_pbits` trajectories for currents and magnetizations, plus energy vector.
 
-**`GibbsSolver`**: Asynchronous single-p-bit-per-step Gibbs sampler (contrast with CaSuDaSolver's synchronous, vectorized update). Resamples exactly one randomly chosen p-bit per timestep via a sigmoid acceptance probability, conditioned on the current state of all others. Same constructor and return contract as `CaSuDaSolver` (drop-in swap), but converges slower — useful as a textbook-correct reference to validate CaSuDa's synchronous approximation against.
+**`GibbsSolver`**: Asynchronous single-p-bit-per-sweep Gibbs sampler (contrast with CaSuDaSolver's synchronous, vectorized update). Each `Nt` tick is a full sweep: every p-bit is resampled once, in a random order, via a sigmoid heat-bath probability conditioned on the current state of all others — this makes `Nt`/`i0` comparable to `CaSuDaSolver`'s (both update every p-bit once per tick). Same constructor and return contract as `CaSuDaSolver` (drop-in swap), but mixes slower (sequential vs. parallel updates within a tick) — useful as a textbook-correct reference to validate CaSuDa's synchronous approximation against.
 
 **Annealing** (`p_kit/solver/annealing.py`): `constant` and `linear` schedules that modify `i0` over time. `execute(solver, circuit, annealing, n_shots, n_last_samples, n_jobs)` runs the solver multiple times in parallel (via `joblib`) and collects final samples.
 

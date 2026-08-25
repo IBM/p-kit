@@ -39,23 +39,25 @@ def test_return_contract_multi_shot():
     assert set(np.unique(out)).issubset({-1.0, 1.0})
 
 
-# ── Asynchronous-update property ─────────────────────────────────────────
+# ── Sweep semantics ───────────────────────────────────────────────────────
 
-def test_asynchronous_update_changes_at_most_one_pbit_per_step():
-    """Exactly one p-bit is resampled per step, so consecutive states
-    differ in at most one coordinate (the resampled p-bit's new draw may
-    coincide with its old value, so zero coordinates is possible too, but
-    never more than one).
+def test_nt_counts_full_sweeps_not_single_flips():
+    """Each Nt step is a full sweep (every p-bit resampled once, in a
+    random order), not a single-p-bit update — so consecutive recorded
+    states may differ in up to n_pbits coordinates. This also rules out a
+    regression to a single-flip-per-step design, which would make this
+    solver's Nt incomparable to CaSuDaSolver's (where one Nt tick also
+    updates every p-bit once).
     """
     gate = ANDGate()
-    solver = GibbsSolver(Nt=400, dt=0.1667, i0=0.9, seed=42)
+    solver = GibbsSolver(Nt=200, dt=0.1667, i0=0.9, seed=42)
     _, all_m, _ = solver.solve(gate)
 
     diffs = np.count_nonzero(all_m[:-1] != all_m[1:], axis=1)
-    assert np.all(diffs <= 1)
-    # Sanity: over 400 steps on a 3-p-bit circuit, at least some steps
-    # should actually flip a bit (else the property is vacuously true).
-    assert np.any(diffs == 1)
+    assert np.all(diffs <= gate.n_pbits)
+    # With n_pbits=3 and 200 sweeps, some sweeps should flip more than one
+    # p-bit — proof this is sweeping all p-bits, not resampling just one.
+    assert np.any(diffs > 1)
 
 
 # ── Seeded reproducibility ────────────────────────────────────────────────

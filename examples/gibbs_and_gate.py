@@ -17,11 +17,12 @@ c.J = np.array([[0, -1, 2], [-1, 0, 2], [2, 2, 0]])
 # (depending on the sign of the bias)
 c.h = np.array([1, 1, -2])
 
-# Asynchronous single-p-bit-per-step Gibbs sampling converges slower than
-# CaSuDa's synchronous update, so use a larger Nt to well-sample the AND
-# gate's stationary distribution. dt is kept for interface parity even
-# though GibbsSolver does not use it.
-solver = GibbsSolver(Nt=30000, dt=0.1667, i0=0.8)
+# Nt counts sweeps (each sweep updates every p-bit once, sequentially, in
+# a random order), matching CaSuDaSolver's convention that Nt updates
+# every p-bit once per step — so the same Nt/i0 used for CaSuDaSolver
+# works here too. dt is kept for interface parity even though GibbsSolver
+# does not use it.
+solver = GibbsSolver(Nt=10000, dt=0.1667, i0=0.8)
 
 input, output, energy = solver.solve(c)
 
