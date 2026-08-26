@@ -16,13 +16,15 @@ Best p-kit configuration:
   use_initial_state=False
 
 Results
-                Model  Trainable     Acc      PPL     Time
-     CaSuDaSolver CPU      22176   0.793   12.155    1.97s
-TorchCaSuDaSolver CPU      22176   0.756   12.125    9.24s
-              GPT CPU     103488   0.829    2.294    2.07s
+                    Model  Trainable     Acc      PPL     Time
+         CaSuDaSolver CPU      22176   0.793   12.155    1.89s
+    TorchCaSuDaSolver CPU      22176   0.756   12.125    9.83s
+CaSuDaOptimizedSolver CPU      22176   0.793   12.155    1.55s
+                  GPT CPU     103488   0.829    2.294    2.26s
 
     The Torch backend is currently slower on CPU than the NumPy backend,
     but it might get faster once we switch to a bigger p-kit LM and CUDA.
+    Numbers are only indicative because this is a small model.
 
 """
 
@@ -34,6 +36,7 @@ from transformers import GPT2Config,GPT2LMHeadModel
 
 from llm_model import SparsePBitLMTemporalMemory
 from p_kit.solver.csd_solver import CaSuDaSolver
+from p_kit.solver.optimized_csd_solver import CaSuDaOptimized
 from p_kit.backends import NumpyBackend, CupyBackend, TorchBackend
 
 TRAIN="""
@@ -130,13 +133,13 @@ def evaluate_gpt(model,device="cpu",context=32):
             nll-=math.log(max(float(p[ids[t]].item()),1e-12)); total+=1
     return correct/total,math.exp(nll/total)
 
-def add_pkit(results,name,backend,sync=None,cache_J=False):
+def add_pkit(results,name,backend,solver_cls=CaSuDaSolver,sync=None,**solver_kwargs):
     print(f"Training {name}...")
     model=make_pkit()
-    model.reservoir_solver=CaSuDaSolver(
-        Nt=10,dt=.1667,i0=.8,seed=7,backend=backend,cache_J=cache_J)
-    model.relu_solver=CaSuDaSolver(
-        Nt=10,dt=.1667,i0=.8,seed=8,backend=backend,cache_J=cache_J)
+    model.reservoir_solver=solver_cls(
+        Nt=10,dt=.1667,i0=.8,seed=7,backend=backend,**solver_kwargs)
+    model.relu_solver=solver_cls(
+        Nt=10,dt=.1667,i0=.8,seed=8,backend=backend,**solver_kwargs)
     acc,ppl,t=train_pkit(model,sync)
     results.append((name,model.readout.size,acc,ppl,t))
 
@@ -154,6 +157,7 @@ def main():
     
     add_pkit(results, "CaSuDaSolver CPU", NumpyBackend())
     add_pkit(results, "TorchCaSuDaSolver CPU", TorchBackend(device="cpu"), cache_J=True)
+    add_pkit(results, "CaSuDaOptimizedSolver CPU", NumpyBackend(), solver_cls=CaSuDaOptimized)
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:

@@ -23,6 +23,13 @@ This framework realises classical computation in an "invertible" format, that is
 
 Drawing inspiration from Quantum Approximate Optimization algorithms, PAOA represents a subset of QAOA that can be simulated probabilistically - this class of algorithms includes Clifford group quantum emulation, smaller implementations of Shor's algorithm and unusual applications typically reserved for Quantum Computers.
 
+#### Language models over p-kit
+
+P-kit has also been used to explore an alternative approach to language modeling based on sparse stochastic p-bit networks rather than a conventional Transformer architecture.
+The [p-kit Language Model Project](https://github.com/IBM/p-kit/wiki/p%E2%80%90kit-Language-Model-Project) includes several demos, ranging from synthetic tasks to a full Tiny Shakespeare benchmark. The p-kit model is compared directly with a small GPT model from Hugging Face.
+The current experiments show that a fixed recurrent p-bit architecture can perform meaningful language modeling with fewer trainable parameters and very competitive CPU inference performance, while avoiding backpropagation through the recurrent p-bit network.
+The project opens an interesting research direction for p-bit-based language modeling.
+
 Please check the [wiki](https://github.com/IBM/p-kit/wiki) for more information on probabilistic computers.
 
 ## Install
