@@ -125,9 +125,8 @@ class SparsePBitLM:
             dt=0.1667,
             i0=0.8,
             seed=seed,
-            backend=NumpyBackend(),
+            backend=NumpyBackend(compile=True),
             use_sparse=True,
-            use_numba=True,
             reuse_buffers=True,
             cache_static=True,
         )
@@ -162,9 +161,8 @@ class SparsePBitLM:
             dt=.1667,
             i0=.8,
             seed=seed+1,
-            backend=NumpyBackend(),
+            backend=NumpyBackend(compile=True),
             use_sparse=False,
-            use_numba=True,
             reuse_buffers=True,
             cache_static=True,
         )

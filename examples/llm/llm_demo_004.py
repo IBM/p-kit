@@ -162,8 +162,8 @@ def main():
     add_pkit(results, "CaSuDaSolver CPU", NumpyBackend())
     add_pkit(results, "TorchCaSuDaSolver CPU", TorchBackend(device="cpu"), cache_J=True)
     add_pkit(
-        results, "CaSuDaOptimizedSolver CPU", NumpyBackend(),
-        use_sparse=True, use_numba=True, reuse_buffers=True, cache_static=True)
+        results, "CaSuDaOptimizedSolver CPU", NumpyBackend(compile=True),
+        use_sparse=True, reuse_buffers=True, cache_static=True)
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:

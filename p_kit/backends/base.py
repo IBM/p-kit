@@ -27,6 +27,14 @@ class Backend(ABC):
     # sparse APIs this doesn't attempt to unify.
     supports_sparse = False
 
+    # Whether this backend's compile() was asked to JIT-compile things
+    # (each backend that supports compile= sets this in its own __init__).
+    # A readable capability flag, not just an internal switch, so a caller
+    # like CaSuDaSolver can key its own optional fast paths off of "did the
+    # user ask this backend to accelerate things" without needing to know
+    # which specific JIT library a given backend uses under the hood.
+    compile_enabled = False
+
     @property
     @abstractmethod
     def xp(self):

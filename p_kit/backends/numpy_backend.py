@@ -13,9 +13,11 @@ class NumpyBackend(Backend):
     """Default backend. Runs the CSD algorithm on the CPU via NumPy.
 
     compile=True JIT-compiles whatever pure-NumPy function it's handed via
-    numba (used by CaSuDaSolver for its per-timestep update). Like
-    TorchBackend's compile=True, this only compiles what it's given - it's
-    the caller's job to decide how much of its own loop to hand over.
+    numba (used by CaSuDaSolver for its per-timestep update, and - since
+    compile_enabled is readable by any caller - also to opt CaSuDaSolver
+    into its whole-loop return_final fast path). Like TorchBackend's
+    compile=True, this only compiles what it's given - it's the caller's
+    job to decide how much of its own loop to hand over.
     """
 
     supports_sparse = True
@@ -27,7 +29,7 @@ class NumpyBackend(Backend):
                 "numba is required for NumpyBackend(compile=True). "
                 "Install with: pip install numba"
             )
-        self._compile = compile
+        self.compile_enabled = compile
         self._compiled_fns = {}
 
     @property
@@ -50,7 +52,7 @@ class NumpyBackend(Backend):
         return array
 
     def compile(self, fn):
-        if not self._compile:
+        if not self.compile_enabled:
             return fn
         # fn is typically a fresh closure per caller (e.g. one built per
         # CaSuDaSolver instance), but closures built from the same source

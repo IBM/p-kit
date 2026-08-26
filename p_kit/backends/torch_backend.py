@@ -37,7 +37,7 @@ class TorchBackend(Backend):
 
         self.torch_device = torch.device(device)
         self.dtype = dtype
-        self._compile = compile
+        self.compile_enabled = compile
         self._compiled_fns = {}
 
         # Some accelerator devices don't support torch.Generator directly;
@@ -88,7 +88,7 @@ class TorchBackend(Backend):
         return torch.inference_mode()
 
     def compile(self, fn):
-        if not self._compile:
+        if not self.compile_enabled:
             return fn
         # fn is typically a fresh closure per caller (e.g. one built per
         # CaSuDaSolver instance), but closures built from the same source

@@ -82,8 +82,7 @@ class CaSuDaSolver(Solver):
 
     def __init__(self, Nt, dt, i0, expected_mean=0, seed=None, backend=None,
                  tau=0.1, cache_J=False,
-                 use_sparse=False, use_numba=False,
-                 reuse_buffers=False, cache_static=False):
+                 use_sparse=False, reuse_buffers=False, cache_static=False):
         super().__init__(Nt, dt, i0, expected_mean, seed, backend, tau)
         # cache_J avoids re-converting c.J to the backend's array type on
         # every solve() call when J is unchanged (matters for CuPy/Torch,
@@ -96,31 +95,25 @@ class CaSuDaSolver(Solver):
         self._J_cache_key = None
         self._step = self.backend.compile(_make_step(self.backend.xp))
 
-        # use_sparse/use_numba/reuse_buffers/cache_static power
+        # use_sparse/reuse_buffers/cache_static, plus use_numba below, power
         # solve(return_final=True)'s whole-loop fast path (_solve_final_fast
         # below): JIT-compile the *entire* Nt-step loop and skip trajectory
         # storage entirely, instead of just skipping storage (which the
-        # generic loop in solve() already does for any backend). Only
-        # NumPy backs this today - numba only understands plain NumPy
-        # arrays, and use_sparse needs a backend that offers one (only
-        # NumpyBackend does, via scipy.sparse).
-        if use_numba and numba is None:
-            raise ImportError(
-                "numba is required for CaSuDaSolver(use_numba=True). "
-                "Install with: pip install numba"
-            )
+        # generic loop in solve() already does for any backend).
         if use_sparse and not self.backend.supports_sparse:
             raise NotImplementedError(
                 f"use_sparse=True is not supported by "
                 f"{type(self.backend).__name__}"
             )
-        if use_numba and self.backend.xp is not np:
-            raise NotImplementedError(
-                "use_numba=True currently requires a NumPy-array backend "
-                "(numba only understands plain NumPy arrays)"
-            )
+        # use_numba isn't a constructor option: it's inferred from the
+        # backend rather than requested directly, since it only ever makes
+        # sense when the caller already asked NumpyBackend to accelerate
+        # things (compile=True) - numba only understands plain NumPy
+        # arrays, so any other backend just leaves this False rather than
+        # erroring (compile=True on e.g. TorchBackend is still meaningful,
+        # just for the per-step path in solve(), not this one).
+        self.use_numba = self.backend.xp is np and self.backend.compile_enabled
         self.use_sparse = use_sparse
-        self.use_numba = use_numba
         self.reuse_buffers = reuse_buffers
         self.cache_static = cache_static
         self._static_J = None
@@ -254,9 +247,10 @@ class CaSuDaSolver(Solver):
         return_final : bool, optional
             When True, skip trajectory/current/energy storage and return only
             the final +/-1 state - useful for repeated/recurrent execution
-            (e.g. a reservoir) where only the last state is ever read. If
-            ``use_numba`` or ``use_sparse`` was set on this solver, uses the
-            whole-loop fast path; otherwise the same loop with
+            (e.g. a reservoir) where only the last state is ever read. Uses
+            the whole-loop fast path when this solver's backend is
+            ``NumpyBackend(compile=True)`` (JIT-compiles the entire loop) or
+            ``use_sparse=True`` was set; otherwise the same loop with
             history-recording skipped.
 
         Returns
@@ -354,6 +348,5 @@ class CaSuDaSolver(Solver):
         return CaSuDaSolver(
             self.Nt, self.dt, self.i0, self.expected_mean, self.seed,
             self.backend, self.tau, self.cache_J,
-            self.use_sparse, self.use_numba, self.reuse_buffers,
-            self.cache_static,
+            self.use_sparse, self.reuse_buffers, self.cache_static,
         )
