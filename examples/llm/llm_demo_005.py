@@ -39,7 +39,7 @@ Results:
      Memory usage can be optimized for lm-p-kit.
      
 GPT achieves better accuracy and perplexity, while p-kit retains parameter-count and inference-speed advantages.
-Faster p-kit inference suggests potential for lower inference energy consumption (datacenter efficiency)
+Faster language model p-kit inference suggests potential for lower energy consumption and better datacenter efficiency.
 """
 
 import math,time
