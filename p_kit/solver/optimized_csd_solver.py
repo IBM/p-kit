@@ -1,3 +1,6 @@
+"""
+A heavily optimized version of the CaSuDaSolver.
+"""
 import numpy as np
 from scipy.sparse import csr_matrix
 
@@ -12,9 +15,8 @@ except ImportError:
 
 if njit:
     @njit(cache=True)
-    def _final_dense_numba(m,J,h,anneal,rnd,dt,threshold):
+    def _final_dense_numba(m,J,h,anneal,rnd,dt,threshold,tmp):
         ns,n=m.shape
-        tmp=np.empty_like(m)
         for run in range(len(anneal)):
             for s in range(ns):
                 for i in range(n):
@@ -24,13 +26,12 @@ if njit:
                     I=anneal[run]*field
                     p=np.exp(-dt*np.exp(-m[s,i]*(I+threshold)))
                     tmp[s,i]=m[s,i]*(1. if p-rnd[run,s,i]>=0 else -1.)
-            m,tmp=tmp,m
+            m[:]=tmp
         return m
 
     @njit(cache=True)
-    def _final_sparse_numba(m,indptr,indices,data,h,anneal,rnd,dt,threshold):
+    def _final_sparse_numba(m,indptr,indices,data,h,anneal,rnd,dt,threshold,tmp):
         ns,n=m.shape
-        tmp=np.empty_like(m)
         for run in range(len(anneal)):
             for s in range(ns):
                 for i in range(n):
@@ -40,30 +41,29 @@ if njit:
                     I=anneal[run]*field
                     p=np.exp(-dt*np.exp(-m[s,i]*(I+threshold)))
                     tmp[s,i]=m[s,i]*(1. if p-rnd[run,s,i]>=0 else -1.)
-            m,tmp=tmp,m
+            m[:]=tmp
         return m
 
 
 class CaSuDaOptimized(CaSuDaSolver):
     """
-    Optimized CaSuDaSolver for repeated/recurrent execution.
+    CaSuDaSolver with optional optimizations for repeated/recurrent execution.
 
-    Optimizations can be enabled independently:
-      return_final   - return only the final state
-      use_sparse     - use sparse J representation
-      use_numba      - JIT compile the final-state solver
-      reuse_buffers  - reuse trajectory buffers
-      cache_static   - cache fixed J/annealing data
+    return_final=True avoids trajectory/current/energy storage in solove()
 
-    cache_static assumes c.J is not modified after the first solve.
-    Call clear_cache() after changing J.
+    Options:
+      use_sparse     - sparse J representation
+      use_numba      - JIT compiled final-state path
+      reuse_buffers  - reuse working arrays
+      cache_static   - cache fixed J and annealing data
+
+    use_sparse/use_numba currently apply to CPU only.
+    With cache_static=True, call clear_cache() after modifying c.J.
     """
 
     def __init__(
         self,Nt,dt,i0,expected_mean=0,seed=None,device="cpu",tau=.1,
-        use_sparse=False,
-        use_numba=False,
-        reuse_buffers=False,
+        use_sparse=False,use_numba=False,reuse_buffers=False,
         cache_static=False
     ):
         super().__init__(Nt,dt,i0,expected_mean,seed,device,tau)
@@ -71,12 +71,16 @@ class CaSuDaOptimized(CaSuDaSolver):
         self.use_numba=use_numba
         self.reuse_buffers=reuse_buffers
         self.cache_static=cache_static
-        self._J=self._Jsparse=self._anneal=self._anneal_key=None
+
+        self._J=None
+        self._Jsparse=None
+        self._anneal=None
+        self._anneal_key=None
         self._buffers={}
 
         if use_numba and njit is None:
             raise ImportError("use_numba=True requires numba")
-        if (use_numba or use_sparse) and device!="cpu":
+        if device!="cpu" and (use_numba or use_sparse):
             raise NotImplementedError(
                 "use_numba/use_sparse currently support CPU only"
             )
@@ -84,6 +88,16 @@ class CaSuDaOptimized(CaSuDaSolver):
     def clear_cache(self):
         self._J=self._Jsparse=self._anneal=self._anneal_key=None
         self._buffers.clear()
+
+    def _buffer(self,name,shape):
+        if not self.reuse_buffers:
+            return np.empty(shape)
+
+        a=self._buffers.get(name)
+        if a is None or a.shape!=shape:
+            a=np.empty(shape)
+            self._buffers[name]=a
+        return a
 
     def _get_J(self,c):
         if not self.cache_static:
@@ -106,24 +120,14 @@ class CaSuDaOptimized(CaSuDaSolver):
 
     def _get_anneal(self,func):
         key=(id(func),self.Nt,float(self.i0))
-        if self.cache_static and self._anneal is not None and key==self._anneal_key:
+        if self.cache_static and self._anneal is not None \
+                and key==self._anneal_key:
             return self._anneal
 
         a=np.asarray([func(self,r) for r in range(self.Nt)],dtype=float)
-
         if self.cache_static:
             self._anneal=a
             self._anneal_key=key
-        return a
-
-    def _buffer(self,name,shape):
-        if not self.reuse_buffers:
-            return np.empty(shape)
-
-        a=self._buffers.get(name)
-        if a is None or a.shape!=shape:
-            a=np.empty(shape)
-            self._buffers[name]=a
         return a
 
     def _initial(self,n,n_shots,initial_state):
@@ -140,7 +144,7 @@ class CaSuDaOptimized(CaSuDaSolver):
 
         return np.tile(state,(n_shots,1))
 
-    def _solve_final(
+    def _solve_final_cpu(
         self,c,annealing_func,n_shots,initial_state,bias_func
     ):
         n=c.n_pbits
@@ -152,20 +156,22 @@ class CaSuDaOptimized(CaSuDaSolver):
 
         if self.use_numba and bias_func is None:
             rnd=np.asarray(self.random((self.Nt,n_shots,n)))
+            tmp=self._buffer("tmp",(n_shots,n))
 
             if self.use_sparse:
                 m=_final_sparse_numba(
                     m,J.indptr,J.indices,J.data,h,anneal,rnd,
-                    self.dt,threshold
+                    self.dt,threshold,tmp
                 )
             else:
                 m=_final_dense_numba(
-                    m,J,h,anneal,rnd,self.dt,threshold
+                    m,J,h,anneal,rnd,self.dt,threshold,tmp
                 )
 
             return m[0] if n_shots==1 else m
 
-        m_filt=np.zeros_like(m)
+        m_filt=self._buffer("m_filt",(n_shots,n))
+        m_filt.fill(0)
 
         for run in range(self.Nt):
             h_eff=h if bias_func is None else np.asarray(
@@ -196,14 +202,30 @@ class CaSuDaOptimized(CaSuDaSolver):
                 "return_final and return_filtered cannot both be True"
             )
 
-        return self._solve_final(
-            c,annealing_func,n_shots,initial_state,bias_func
+        if self.device=="cpu":
+            return self._solve_final_cpu(
+                c,annealing_func,n_shots,initial_state,bias_func
+            )
+
+        # CUDA fallback: preserve return_final semantics using CaSuDaSolver.
+        result=super().solve(
+            c,annealing_func,n_shots,bias_func,False,initial_state
         )
+        if n_shots==1:
+            return result[1][-1]
+        return result[-1]
 
     def copy(self):
         return CaSuDaOptimized(
-            self.Nt,self.dt,self.i0,self.expected_mean,self.seed,
-            self.device,self.tau,
-            self.use_sparse,self.use_numba,
-            self.reuse_buffers,self.cache_static
+            Nt=self.Nt,
+            dt=self.dt,
+            i0=self.i0,
+            expected_mean=self.expected_mean,
+            seed=self.seed,
+            device=self.device,
+            tau=self.tau,
+            use_sparse=self.use_sparse,
+            use_numba=self.use_numba,
+            reuse_buffers=self.reuse_buffers,
+            cache_static=self.cache_static
         )
