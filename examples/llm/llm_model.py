@@ -49,6 +49,7 @@ import numpy as np
 
 from p_kit.psl.p_circuit import PCircuit
 from p_kit.solver.csd_solver import CaSuDaSolver
+from p_kit.solver.optimized_csd_solver import CaSuDaOptimized 
 
 
 @dataclass
@@ -119,11 +120,18 @@ class SparsePBitLM:
                 sym=True,
             )
 
-        self.reservoir_solver = CaSuDaSolver(
+        #self.reservoir_solver = CaSuDaSolver(
+        self.reservoir_solver = CaSuDaOptimized(
             Nt=reservoir_steps,
             dt=0.1667,
             i0=0.8,
             seed=seed,
+            
+            # CaSuDaOptimized parameters
+            use_sparse=True,
+            use_numba=True,
+            reuse_buffers=True,
+            cache_static=True
         )
 
         # ==========================================================
@@ -151,11 +159,17 @@ class SparsePBitLM:
             dtype=float,
         )
 
-        self.relu_solver = CaSuDaSolver(
+        self.relu_solver=CaSuDaOptimized(
             Nt=relu_steps,
-            dt=0.1667,
-            i0=0.8,
-            seed=seed + 1,
+            dt=.1667,
+            i0=.8,
+            seed=seed+1,
+            
+            # only used by CaSuDaOptimized
+            use_sparse=False,
+            use_numba=True,
+            reuse_buffers=True,
+            cache_static=True
         )
 
         # Five reservoir p-bits feed the ReLU circuit.
@@ -217,45 +231,37 @@ class SparsePBitLM:
             (-1.0, 1.0),
             size=self.n_pbits,
         )
-
-    def step(self, token_id, sweeps=1):
-        
+    
+    def step(self,token_id,sweeps=1):
         for _ in range(sweeps):
-            self.circuit.h = (
-                self.token_h[token_id]
-                + self.memory_scale * self.state
-            )
+            self.circuit.h=self.token_h[token_id]+self.memory_scale*self.state
+            initial=self.state if self.use_initial_state else None
     
-            _, trajectory, _ = self.reservoir_solver.solve(
-                self.circuit,
-                initial_state=self.state if self.use_initial_state else None,
-            )
+            if isinstance(self.reservoir_solver,CaSuDaOptimized):
+                self.state=self.reservoir_solver.solve(
+                    self.circuit,initial_state=initial,return_final=True
+                ).astype(float)
+            else:
+                _,trajectory,_=self.reservoir_solver.solve(
+                    self.circuit,initial_state=initial
+                )
+                self.state=trajectory[-1].astype(float)
     
-            self.state = trajectory[-1].astype(float)
-
         return self.state
-
+    
     def relu_features(self):
-        """
-        Run the p-kit ReLU circuit on part of the reservoir state.
-        """
-
-        h = self.relu_base_h.copy()
-
-        h[:5] += self.state[
-            self.relu_source_idx
-        ]
-
-        self.relu.h = h
-
-        _, trajectory, _ = (
-            self.relu_solver.solve(
-                self.relu
-            )
-        )
-
+        h=self.relu_base_h.copy()
+        h[:5]+=self.state[self.relu_source_idx]
+        self.relu.h=h
+    
+        if isinstance(self.relu_solver,CaSuDaOptimized):
+            return self.relu_solver.solve(
+                self.relu,return_final=True
+            ).astype(float)
+    
+        _,trajectory,_=self.relu_solver.solve(self.relu)
         return trajectory[-1].astype(float)
-
+    
     def _features(
         self,
         token_id,
