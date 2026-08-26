@@ -16,13 +16,12 @@ Requires: pip install "transformers[torch]"
 
 Results
      Model  Trainable     Acc      PPL     Time
-     p-kit      22176   0.793   12.155    1.67s
-       GPT     103488   0.829    2.294    2.21s
+     p-kit      22176   0.793   12.155    0.59s
+       GPT     103488   0.829    2.294    2.16s
 
 The p-kit model reaches 79.3% accuracy vs 82.9% for the GPT baseline.
 The p-kit model uses 22,176 vs 103,488 trainable parameters, about 4.7x fewer than GPT.
 There is no backpropagation through the p-bit reservoir.
-Training time is similar in this small experiment.
 """
 
 import math, time
