@@ -18,13 +18,14 @@ Best p-kit configuration:
   use_initial_state=False
   
 Results
-                Model  Trainable     Acc      PPL     Time
-     CaSuDaSolver CPU      22176   0.793   12.155    1.98s
-TorchCaSuDaSolver CPU      22176   0.756   12.125   10.48s
-              GPT CPU     103488   0.829    2.294    2.43s
+                    Model  Trainable     Acc      PPL     Time
+         CaSuDaSolver CPU      22176   0.793   12.155    1.89s
+    TorchCaSuDaSolver CPU      22176   0.756   12.125    9.83s
+CaSuDaOptimizedSolver CPU      22176   0.793   12.155    1.55s
+                  GPT CPU     103488   0.829    2.294    2.26s
            
-    TorchCaSuDaSolver is currently slower on CPU than CaSuDaSolver, but it 
-    might get faster once we switch to a bigger p-kit LM and CUDA.
+    Numbers are only indicative because this is a small model.
+    
 
 """
 
@@ -37,6 +38,7 @@ from transformers import GPT2Config,GPT2LMHeadModel
 from llm_model import SparsePBitLMTemporalMemory
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.solver.torch_csd_solver import TorchCaSuDaSolver
+from p_kit.solver.optimized_csd_solver import CaSuDaOptimized 
 
 TRAIN="""
 the cat sat on the mat.
@@ -156,6 +158,7 @@ def main():
     
     add_pkit(results, "CaSuDaSolver CPU", CaSuDaSolver, "cpu")
     add_pkit(results, "TorchCaSuDaSolver CPU", TorchCaSuDaSolver, "cpu")
+    add_pkit(results, "CaSuDaOptimizedSolver CPU", CaSuDaOptimized, "cpu")
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:
