@@ -48,7 +48,7 @@ The sparse p-bit architecture is intended to be hardware-friendly: the same mode
 * `llm_demo_001.py` - Basic p-kit language-model demo showing training, next-character generation, sparsity, and p-kit execution.
 * `llm_demo_002.py` - Comparison between `SparsePBitLM` and a tiny Hugging Face GPT trained from scratch on the same corpus and vocabulary. Compares accuracy, perplexity, training time, trainable parameters, and generated text.
 * `llm_demo_003.py` - Comparison between `SparsePBitLMTemporalMemory` and the tiny GPT baseline. Shows the accuracy improvement obtained with explicit reservoir-state history while keeping fewer trainable parameters and no backpropagation through the p-bit reservoir.
-* `llm_demo_004.py` - Compares a LM over p-kit using several Solvers and the GPT baseline. Shows that execution can be on both CPU and GPU.
+* `llm_demo_004.py` - Compares a LM over p-kit using several Solvers and the GPT baseline. Shows that execution can be on both CPU and GPU. Requires `pip install p-kit[llm-demo]` (PyTorch and Hugging Face `transformers`).
 
 # Future research
 

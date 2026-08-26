@@ -46,6 +46,8 @@ setup(name='p-kit',
                       'tests': ['pytest', 'seaborn', 'flake8'],
                       'gpu': ['cupy-cuda13x'],
                       'docplex': ['docplex'],
+                      'torch': ['torch'],
+                      'llm-demo': ['torch', 'transformers'],
                       },
       zip_safe=False,
 )

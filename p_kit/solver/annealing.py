@@ -12,7 +12,7 @@ def execute(solver, circuit, annealing, n_shots, n_last_samples=50, n_jobs=-1):
         _, time_points, _ = solver.copy().solve(circuit.copy(), annealing_func=annealing)
         return time_points[-n_last_samples-1:-1, :]
 
-    if getattr(solver, 'device', 'cpu') == 'cuda':
+    if solver.backend.prefers_vectorized_shots:
         all_m = solver.solve(circuit, annealing_func=annealing, n_shots=n_shots)
         samples = all_m[-n_last_samples-1:-1]  # (n_last_samples, n_shots, n_pbits)
         return samples.transpose(1, 0, 2).reshape(n_shots * n_last_samples, circuit.n_pbits)

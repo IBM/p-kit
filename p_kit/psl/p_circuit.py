@@ -30,6 +30,10 @@ class PCircuit:
         self.h = np.zeros((n_pbits,))
         self.J = np.zeros((n_pbits, n_pbits))
         self._connections = {}
+        # Bumped on every in-place J mutation so callers that cache J by
+        # identity (e.g. CaSuDaSolver's cache_J) can detect staleness
+        # even though id(self.J) doesn't change across set_weight() calls.
+        self._j_version = 0
 
         if ports:
             self._initialize_ports(ports)
@@ -58,6 +62,7 @@ class PCircuit:
         self.J[from_pbit, to_pbit] = weight
         if sym:
             self.J[to_pbit, from_pbit] = weight
+        self._j_version += 1
 
     def copy(self):
         new_circuit = PCircuit(self.n_pbits, self.ports)
