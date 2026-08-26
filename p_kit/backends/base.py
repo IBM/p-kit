@@ -8,10 +8,11 @@ class Backend(ABC):
 
     A Backend owns everything that varies across array libraries: array
     creation, RNG, host transfer, and any device-specific execution hooks
-    (autograd disabling, JIT compilation). The CSD dynamics themselves live
-    once in CaSuDaSolver and never branch on backend type - they only call
-    `backend.xp.<fn>` (matmul via `@`, `exp`, `sign`, `tile`, `broadcast_to`,
-    which NumPy/CuPy/Torch all agree on) and the methods below.
+    (autograd disabling, JIT compilation, sparse representations, scratch
+    memory). It knows nothing about the CSD dynamics themselves - those live
+    once in CaSuDaSolver, which only calls `backend.xp.<fn>` (matmul via
+    `@`, `exp`, `sign`, `tile`, `broadcast_to`, which NumPy/CuPy/Torch all
+    agree on) and the methods below.
     """
 
     # Whether a single batched (n_shots, n_pbits) call is faster than
@@ -20,6 +21,11 @@ class Backend(ABC):
     # device) - joblib process-based parallelism would just add pickling
     # overhead (and can't pickle a CUDA context or a compiled kernel at all).
     prefers_vectorized_shots = False
+
+    # Whether sparse(...) is implemented. NumPy/SciPy is the only backend
+    # that currently supports it - CuPy and Torch have their own, different
+    # sparse APIs this doesn't attempt to unify.
+    supports_sparse = False
 
     @property
     @abstractmethod
@@ -53,5 +59,27 @@ class Backend(ABC):
         return nullcontext()
 
     def compile(self, fn):
-        """Optionally JIT-compile a hot-path function. Identity by default."""
+        """Optionally JIT-compile fn (a pure array-in-array-out callable
+        this backend's `xp` namespace, closed over by the caller so it
+        needs no per-call `xp` argument). Identity by default."""
         return fn
+
+    def sparse(self, array):
+        """Convert `array` to this backend's sparse representation, if it
+        has one - see `supports_sparse`."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support sparse arrays"
+        )
+
+    def buffer(self, name, shape, dtype=None):
+        """Get (and cache) a scratch array of `shape`, keyed by `name`. A
+        plain memory pool with no algorithm awareness - callers decide
+        whether/when reuse is safe (e.g. only across calls that don't alias
+        the buffer across overlapping lifetimes); this just avoids
+        reallocating when they do."""
+        cache = self.__dict__.setdefault("_buffer_cache", {})
+        a = cache.get(name)
+        if a is None or a.shape != shape:
+            a = self.zeros(shape, dtype)
+            cache[name] = a
+        return a

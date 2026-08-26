@@ -26,6 +26,11 @@ CaSuDaOptimizedSolver CPU      22176   0.793   12.155    1.55s
     but it might get faster once we switch to a bigger p-kit LM and CUDA.
     Numbers are only indicative because this is a small model.
 
+    All rows use solve(return_final=True) (SparsePBitLM.step()/relu_features()
+    always request it now), so every row benefits from skipping trajectory
+    storage - "CaSuDaOptimizedSolver CPU" additionally uses NumpyBackend's
+    use_numba/use_sparse/reuse_buffers/cache_static fast path on top of that.
+
 """
 
 import math,time
@@ -36,7 +41,6 @@ from transformers import GPT2Config,GPT2LMHeadModel
 
 from llm_model import SparsePBitLMTemporalMemory
 from p_kit.solver.csd_solver import CaSuDaSolver
-from p_kit.solver.optimized_csd_solver import CaSuDaOptimized
 from p_kit.backends import NumpyBackend, CupyBackend, TorchBackend
 
 TRAIN="""
@@ -133,12 +137,12 @@ def evaluate_gpt(model,device="cpu",context=32):
             nll-=math.log(max(float(p[ids[t]].item()),1e-12)); total+=1
     return correct/total,math.exp(nll/total)
 
-def add_pkit(results,name,backend,solver_cls=CaSuDaSolver,sync=None,**solver_kwargs):
+def add_pkit(results,name,backend,sync=None,**solver_kwargs):
     print(f"Training {name}...")
     model=make_pkit()
-    model.reservoir_solver=solver_cls(
+    model.reservoir_solver=CaSuDaSolver(
         Nt=10,dt=.1667,i0=.8,seed=7,backend=backend,**solver_kwargs)
-    model.relu_solver=solver_cls(
+    model.relu_solver=CaSuDaSolver(
         Nt=10,dt=.1667,i0=.8,seed=8,backend=backend,**solver_kwargs)
     acc,ppl,t=train_pkit(model,sync)
     results.append((name,model.readout.size,acc,ppl,t))
@@ -157,7 +161,9 @@ def main():
     
     add_pkit(results, "CaSuDaSolver CPU", NumpyBackend())
     add_pkit(results, "TorchCaSuDaSolver CPU", TorchBackend(device="cpu"), cache_J=True)
-    add_pkit(results, "CaSuDaOptimizedSolver CPU", NumpyBackend(), solver_cls=CaSuDaOptimized)
+    add_pkit(
+        results, "CaSuDaOptimizedSolver CPU", NumpyBackend(),
+        use_sparse=True, use_numba=True, reuse_buffers=True, cache_static=True)
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:

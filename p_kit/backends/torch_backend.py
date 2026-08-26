@@ -90,6 +90,11 @@ class TorchBackend(Backend):
     def compile(self, fn):
         if not self._compile:
             return fn
-        if fn not in self._compiled_fns:
-            self._compiled_fns[fn] = torch.compile(fn, mode="reduce-overhead")
-        return self._compiled_fns[fn]
+        # fn is typically a fresh closure per caller (e.g. one built per
+        # CaSuDaSolver instance), but closures built from the same source
+        # share the same __code__ object - key on that so solvers sharing
+        # this backend share one compiled kernel instead of recompiling.
+        key = fn.__code__
+        if key not in self._compiled_fns:
+            self._compiled_fns[key] = torch.compile(fn, mode="reduce-overhead")
+        return self._compiled_fns[key]

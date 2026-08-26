@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import csr_matrix
 
 from .base import Backend
 
@@ -8,31 +9,16 @@ except ImportError:
     numba = None
 
 
-def _csd_step_numba_impl(m, J, h_eff, I_scale, threshold, dt, rnd):
-    """Same update as csd_solver._csd_step, but numba-compilable.
-
-    numba's nopython mode can't type a module (like `xp`) passed as a
-    runtime argument, so this hardcodes `np` as a global instead of taking
-    an array-library namespace parameter - unlike the generic `_csd_step`
-    it mirrors, which every backend's eager path shares.
-    """
-    field = m @ J
-    I = I_scale * (field + h_eff)
-    s = np.exp(-dt * np.exp(-m * (I + threshold)))
-    m = m * np.sign(s - rnd)
-    return m, I
-
-
 class NumpyBackend(Backend):
     """Default backend. Runs the CSD algorithm on the CPU via NumPy.
 
-    compile=True JIT-compiles the per-timestep update (see
-    CaSuDaSolver._step) via numba, instead of running it as plain NumPy.
-    Like TorchBackend's compile=True, this only compiles one step, not the
-    whole Nt-step Python loop, so it won't fuse away per-iteration Python
-    overhead - it mainly pays off when the elementwise math dominates
-    (larger n_pbits/n_shots).
+    compile=True JIT-compiles whatever pure-NumPy function it's handed via
+    numba (used by CaSuDaSolver for its per-timestep update). Like
+    TorchBackend's compile=True, this only compiles what it's given - it's
+    the caller's job to decide how much of its own loop to hand over.
     """
+
+    supports_sparse = True
 
     def __init__(self, dtype=None, compile=False):
         self.dtype = dtype
@@ -66,11 +52,14 @@ class NumpyBackend(Backend):
     def compile(self, fn):
         if not self._compile:
             return fn
-        if fn not in self._compiled_fns:
-            jitted = numba.njit(cache=True)(_csd_step_numba_impl)
+        # fn is typically a fresh closure per caller (e.g. one built per
+        # CaSuDaSolver instance), but closures built from the same source
+        # share the same __code__ object - key on that so solvers sharing
+        # this backend share one compiled kernel instead of recompiling.
+        key = fn.__code__
+        if key not in self._compiled_fns:
+            self._compiled_fns[key] = numba.njit(cache=True)(fn)
+        return self._compiled_fns[key]
 
-            def wrapper(xp, m, J, h_eff, I_scale, threshold, dt, rnd):
-                return jitted(m, J, h_eff, I_scale, threshold, dt, rnd)
-
-            self._compiled_fns[fn] = wrapper
-        return self._compiled_fns[fn]
+    def sparse(self, array):
+        return csr_matrix(array)
