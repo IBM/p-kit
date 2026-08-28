@@ -45,11 +45,12 @@ class GibbsSolver(Solver):
         ``n_shots > 1``  -> ``all_m``
         """
 
-        xp = self.xp
+        backend = self.backend
+        xp = backend.xp
         n_pbits = c.n_pbits
 
-        J = xp.asarray(c.J)
-        h = xp.asarray(c.h).flatten()  # Ensure h is 1D for proper broadcasting
+        J = backend.asarray(c.J)
+        h = backend.asarray(c.h).reshape(-1)  # Ensure h is 1D for proper broadcasting
 
         # m is (n_shots, n_pbits) — works for n_shots=1 too
         m = xp.sign(0.5 - self.random((n_shots, n_pbits)))
@@ -72,7 +73,7 @@ class GibbsSolver(Solver):
             # that all_I[run] is the current which produced all_m[run].
             all_I[run] = (a * field)[0]
 
-            for idx in self._random_gen.permutation(n_pbits):
+            for idx in self._generator.permutation(n_pbits):
                 idx = int(idx)
                 p = 1 / (1 + xp.exp(-2 * a * field[:, idx]))
                 u = self.random(n_shots)
@@ -89,8 +90,9 @@ class GibbsSolver(Solver):
             # the field already maintained above, no O(n_pbits^2) matmul.
             E[run] = 0.5 * self.i0 * xp.dot(m[0], h + field[0])
 
-        if self.device == 'cuda':
-            all_I, all_m, E = all_I.get(), all_m.get(), E.get()
+        all_I = backend.to_numpy(all_I)
+        all_m = backend.to_numpy(all_m)
+        E = backend.to_numpy(E)
 
         if n_shots == 1:
             return all_I, all_m[:, 0, :], E
@@ -98,4 +100,4 @@ class GibbsSolver(Solver):
 
     def copy(self):
         return GibbsSolver(self.Nt, self.dt, self.i0, self.expected_mean,
-                           self.seed, self.device, self.tau)
+                           self.seed, self.backend, self.tau)

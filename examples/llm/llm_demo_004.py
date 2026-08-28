@@ -1,31 +1,35 @@
 """
 llm_demo_004.py
 
-Compares SparsePBitLMTemporalMemory using:
-  1. CaSuDaSolver
-  2. TorchCaSuDaSolver
-  3. Tiny GPT baseline
-on both CPU and GPU (if available)
+Compares SparsePBitLMTemporalMemory using CaSuDaSolver on:
+  1. NumpyBackend (CPU)
+  2. TorchBackend (CPU, and CUDA if available)
+  3. CupyBackend (CUDA, if available)
+against a Tiny GPT baseline, on both CPU and GPU (if available).
 
-GPU support:
-     CaSuDaSolver => GPU through CuPy/CUDA
-TorchCaSuDaSolver => GPU through PyTorch CUDA
-Tiny GPT baseline => GPU through PyTorch CUDA
+The CSD algorithm is a single implementation (CaSuDaSolver); only the
+backend changes between rows below.
 
 Best p-kit configuration:
   history_size=8
   memory_scale=0.35
   use_initial_state=False
-  
+
 Results
                     Model  Trainable     Acc      PPL     Time
          CaSuDaSolver CPU      22176   0.793   12.155    1.89s
     TorchCaSuDaSolver CPU      22176   0.756   12.125    9.83s
 CaSuDaOptimizedSolver CPU      22176   0.793   12.155    1.55s
                   GPT CPU     103488   0.829    2.294    2.26s
-           
+
+    The Torch backend is currently slower on CPU than the NumPy backend,
+    but it might get faster once we switch to a bigger p-kit LM and CUDA.
     Numbers are only indicative because this is a small model.
-    
+
+    All rows use solve(return_final=True) (SparsePBitLM.step()/relu_features()
+    always request it now), so every row benefits from skipping trajectory
+    storage - "CaSuDaOptimizedSolver CPU" additionally uses NumpyBackend's
+    use_numba/use_sparse/reuse_buffers/cache_static fast path on top of that.
 
 """
 
@@ -37,8 +41,7 @@ from transformers import GPT2Config,GPT2LMHeadModel
 
 from llm_model import SparsePBitLMTemporalMemory
 from p_kit.solver.csd_solver import CaSuDaSolver
-from p_kit.solver.torch_csd_solver import TorchCaSuDaSolver
-from p_kit.solver.optimized_csd_solver import CaSuDaOptimized 
+from p_kit.backends import NumpyBackend, CupyBackend, TorchBackend
 
 TRAIN="""
 the cat sat on the mat.
@@ -134,13 +137,13 @@ def evaluate_gpt(model,device="cpu",context=32):
             nll-=math.log(max(float(p[ids[t]].item()),1e-12)); total+=1
     return correct/total,math.exp(nll/total)
 
-def add_pkit(results,name,solver_cls,device,sync=None,**kwargs):
+def add_pkit(results,name,backend,sync=None,**solver_kwargs):
     print(f"Training {name}...")
     model=make_pkit()
-    model.reservoir_solver=solver_cls(
-        Nt=10,dt=.1667,i0=.8,seed=7,device=device,**kwargs)
-    model.relu_solver=solver_cls(
-        Nt=10,dt=.1667,i0=.8,seed=8,device=device,**kwargs)
+    model.reservoir_solver=CaSuDaSolver(
+        Nt=10,dt=.1667,i0=.8,seed=7,backend=backend,**solver_kwargs)
+    model.relu_solver=CaSuDaSolver(
+        Nt=10,dt=.1667,i0=.8,seed=8,backend=backend,**solver_kwargs)
     acc,ppl,t=train_pkit(model,sync)
     results.append((name,model.readout.size,acc,ppl,t))
 
@@ -156,20 +159,22 @@ def main():
     np.random.seed(7); torch.manual_seed(7)
     results=[]
     
-    add_pkit(results, "CaSuDaSolver CPU", CaSuDaSolver, "cpu")
-    add_pkit(results, "TorchCaSuDaSolver CPU", TorchCaSuDaSolver, "cpu")
-    add_pkit(results, "CaSuDaOptimizedSolver CPU", CaSuDaOptimized, "cpu")
+    add_pkit(results, "CaSuDaSolver CPU", NumpyBackend())
+    add_pkit(results, "TorchCaSuDaSolver CPU", TorchBackend(device="cpu"), cache_J=True)
+    add_pkit(
+        results, "CaSuDaOptimizedSolver CPU", NumpyBackend(compile=True),
+        use_sparse=True, reuse_buffers=True, cache_static=True)
     add_gpt(results, "GPT CPU", "cpu")
 
     if CUPY_CUDA:
         add_pkit(
-            results, "CaSuDaSolver CUDA", CaSuDaSolver, "cuda",
+            results, "CaSuDaSolver CUDA", CupyBackend(),
             sync=lambda: cp.cuda.Stream.null.synchronize())
-    
+
     if TORCH_CUDA:
         add_pkit(
-            results, "TorchCaSuDaSolver CUDA", TorchCaSuDaSolver, "cuda",
-            sync=torch.cuda.synchronize, compile=True)
+            results, "TorchCaSuDaSolver CUDA", TorchBackend(device="cuda", compile=True),
+            sync=torch.cuda.synchronize, cache_J=True)
         add_gpt(results, "GPT CUDA", "cuda")
 
     print("\nCUDA availability")
