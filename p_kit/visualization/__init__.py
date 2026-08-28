@@ -4,6 +4,7 @@ from .vin_vout import vin_vout
 from .plot3d import plot3d
 from .tsp_graph import visualize_tsp_route
 from .heatmap import heatmap
+from .hypercube import hypercube_plot
 
 __all__ = [
     "heatmap",
@@ -13,5 +14,6 @@ __all__ = [
     "energyplot",
     "vin_vout",
     "plot3d",
-    "visualize_tsp_route"
+    "visualize_tsp_route",
+    "hypercube_plot"
 ]
