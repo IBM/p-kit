@@ -28,7 +28,7 @@ import torch
 #import torch
 from torch.utils.data import DataLoader
 from transformers import GPT2Config, GPT2LMHeadModel
-from llm_model import SparsePBitLM
+from p_kit.llm.llm_models import SparsePBitLM
 
 
 TRAIN = """

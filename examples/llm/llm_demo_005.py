@@ -49,7 +49,7 @@ import torch.nn.functional as F
 from urllib.request import urlopen
 from torch.utils.data import DataLoader
 from transformers import GPT2Config,GPT2LMHeadModel
-from llm_model import SparsePBitLMTemporalMemory
+from p_kit.llm.llm_models import SparsePBitLMTemporalMemory
 
 SEED=7
 CONTEXT=64
