@@ -26,7 +26,7 @@ Drawing inspiration from Quantum Approximate Optimization algorithms, PAOA repre
 #### Language models over p-kit
 
 P-kit has also been used to explore an alternative approach to language modeling based on sparse stochastic p-bit networks rather than a conventional Transformer architecture.
-The [p-kit Language Model Project](https://github.com/IBM/p-kit/wiki/p%E2%80%90kit-Language-Model-Project) includes several demos, ranging from synthetic tasks to a full Tiny Shakespeare benchmark. The p-kit model is compared directly with a small GPT model from Hugging Face.
+The [p-kit Language Model Project](https://github.com/IBM/p-kit/wiki/p%E2%80%90kit-Language-Model-Project) includes several [demos](https://github.com/IBM/p-kit/tree/main/examples/llm), ranging from synthetic tasks to a full Tiny Shakespeare benchmark. The p-kit model is compared directly with a small GPT model from Hugging Face.
 The current experiments show that a fixed recurrent p-bit architecture can perform meaningful language modeling with fewer trainable parameters and very competitive CPU inference performance, while avoiding backpropagation through the recurrent p-bit network.
 The project opens an interesting research direction for p-bit-based language modeling.
 

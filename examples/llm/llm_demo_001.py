@@ -12,7 +12,7 @@ In the future SparsePBitLM could run on an RP2350
 microcontroller or be translated to a quantum circuit/backend.
 """
 
-from llm_model import SparsePBitLM
+from p_kit.llm.llm_models import SparsePBitLM
 
 
 CORPUS = """

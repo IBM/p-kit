@@ -39,7 +39,7 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import GPT2Config,GPT2LMHeadModel
 
-from llm_model import SparsePBitLMTemporalMemory
+from p_kit.llm.llm_models import SparsePBitLMTemporalMemory
 from p_kit.solver.csd_solver import CaSuDaSolver
 from p_kit.backends import NumpyBackend, CupyBackend, TorchBackend
 

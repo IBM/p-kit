@@ -44,7 +44,7 @@ The sparse p-bit architecture is intended to be hardware-friendly: the same mode
 
 # Files
 
-* `llm_model.py` - Sparse p-bit reservoir language model proof of concept. Uses a p-kit recurrent reservoir, p-kit ReLU block, and NumPy ridge-regression readout.
+* `p_kit/llm/llm_models.py` - Sparse p-bit reservoir language model proof of concept. Uses a p-kit recurrent reservoir, p-kit ReLU block, and NumPy ridge-regression readout.
 * `llm_demo_001.py` - Basic p-kit language-model demo showing training, next-character generation, sparsity, and p-kit execution.
 * `llm_demo_002.py` - Comparison between `SparsePBitLM` and a tiny Hugging Face GPT trained from scratch on the same corpus and vocabulary. Compares accuracy, perplexity, training time, trainable parameters, and generated text.
 * `llm_demo_003.py` - Comparison between `SparsePBitLMTemporalMemory` and the tiny GPT baseline. Shows the accuracy improvement obtained with explicit reservoir-state history while keeping fewer trainable parameters and no backpropagation through the p-bit reservoir.
