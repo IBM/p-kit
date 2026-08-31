@@ -188,14 +188,15 @@ def main():
 
     # Visualize the trained reservoir's {-1,+1}^n_pbits state-space
     # trajectory while it reads real Shakespeare text (test split). n_pbits
-    # is far above hypercube_plot's exact-enumeration limit, so this
-    # PCA-projects the sampled states instead of the full vertex/edge graph.
+    # is far above hypercube_plot's exact-enumeration limit, so this shows
+    # a relaxation curve + PCA-vs-noise spectrum, plus a labeled projection
+    # colored by the driving character (the strongest external signal we
+    # found in this state space - see the conversation this was built in).
     model.reset()
-    sample = test[:500]
-    history = np.array([
-        model.step(model.char_to_id[c]) for c in sample if c in model.char_to_id
-    ])
-    hypercube_plot(history)
+    sample = test[:2000]
+    char_ids = [model.char_to_id[c] for c in sample if c in model.char_to_id]
+    history = np.array([model.step(i) for i in char_ids])
+    hypercube_plot(history, labels=char_ids)
 
 if __name__=="__main__":
     main()
