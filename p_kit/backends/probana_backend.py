@@ -1,6 +1,9 @@
 """
 Probana backend for p-kit.
 
+Probana is an experimental physical probabilistic computer:
+https://github.com/toncho11/probana
+
 Communicates with the Probana physical p-bit computer over USB serial.
 
 Protocol commands:
