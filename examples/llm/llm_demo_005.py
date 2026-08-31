@@ -50,6 +50,7 @@ from urllib.request import urlopen
 from torch.utils.data import DataLoader
 from transformers import GPT2Config,GPT2LMHeadModel
 from p_kit.llm.llm_models import SparsePBitLMTemporalMemory
+from p_kit.visualization import hypercube_plot
 
 SEED=7
 CONTEXT=64
@@ -184,6 +185,17 @@ def main():
     print(f"{'p-kit':>10} {pp:10d} {T:5.2f} {pacc:7.3f} {pppl:8.3f} {ptrain:8.2f}s {pinfer:8.2f}s")
     print(f"{'GPT':>10} {gp:10d} {gT:5.2f} {gacc:7.3f} {gppl:8.3f} {gtrain:8.2f}s {ginfer:8.2f}s")
     print(f"\np-kit uses {100*(1-pp/gp):.1f}% fewer trainable parameters.")
+
+    # Visualize the trained reservoir's {-1,+1}^n_pbits state-space
+    # trajectory while it reads real Shakespeare text (test split). n_pbits
+    # is far above hypercube_plot's exact-enumeration limit, so this
+    # PCA-projects the sampled states instead of the full vertex/edge graph.
+    model.reset()
+    sample = test[:500]
+    history = np.array([
+        model.step(model.char_to_id[c]) for c in sample if c in model.char_to_id
+    ])
+    hypercube_plot(history)
 
 if __name__=="__main__":
     main()
