@@ -11,6 +11,8 @@ Protocol commands:
   CLEAR <n>
   H <i> <value>
   J <from> <to> <value>
+  ANNEAL CONSTANT <scale>
+  ANNEAL LINEAR <start> <end> <steps>
   COMMIT
   RUN <samples> <burn_in> <thin>
 
@@ -29,6 +31,7 @@ class ProbanaBackend(NumpyBackend):
 
     protocol_name = "PROBANA"
     protocol_version = 1
+    supports_annealing = True
     supports_native_pbits = True
 
     def __init__(self, port=None, baudrate=115200, timeout=2.0,
@@ -46,6 +49,8 @@ class ProbanaBackend(NumpyBackend):
         self.ser = serial.Serial(self.port, baudrate, timeout=0.2)
         self.n_pbits = self._wait_ready(startup_timeout)
         self.ser.timeout = timeout
+        
+        self.supports_pkit_annealing_func = False
 
     def _find_port(self):
         ports = list(self.list_ports.comports())
@@ -124,7 +129,24 @@ class ProbanaBackend(NumpyBackend):
             raise RuntimeError(f"Invalid PING response: {line}")
         return n
 
-    def load_circuit(self, J, h):
+    def set_annealing(self, mode="constant", start=1.0, end=None, steps=1):
+        mode = mode.lower()
+
+        if mode == "constant":
+            self._send(f"ANNEAL CONSTANT {float(start):.9g}")
+        elif mode == "linear":
+            if end is None or int(steps) < 1:
+                raise ValueError("Linear annealing requires end and steps >= 1")
+            self._send(
+                f"ANNEAL LINEAR {float(start):.9g} "
+                f"{float(end):.9g} {int(steps)}"
+            )
+        else:
+            raise ValueError(f"Unsupported annealing mode: {mode}")
+
+        self._ok()
+ 
+    def load_circuit(self, J, h, annealing=("constant", 1.0)):
         J = np.asarray(J, dtype=float)
         h = np.asarray(h, dtype=float).reshape(-1)
 
@@ -148,9 +170,10 @@ class ProbanaBackend(NumpyBackend):
             self._send(f"J {src} {dst} {J[src,dst]:.9g}"); self._ok()
 
         self._send("COMMIT"); self._ok()
+        self.set_annealing(*annealing)
 
-    def run_circuit(self, J, h, samples, burn_in=100, thin=1):
-        self.load_circuit(J, h)
+    def run_circuit(self, J, h, samples, burn_in=100, thin=1, annealing=("constant", 1.0)):
+        self.load_circuit(J, h, annealing)
         n = len(h)
 
         self._send(f"RUN {int(samples)} {int(burn_in)} {int(thin)}")
