@@ -23,6 +23,11 @@ from sklearn.cluster import MiniBatchKMeans
 from p_kit.psl import PCircuit
 from p_kit.solver.corr_ann_solver import CorrelationAnnealingSolver, staged_ramp
 
+from joblib import Parallel, delayed
+import os
+import time
+
+N_WORKERS = min(4, os.cpu_count() or 1)
 # ----------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------
@@ -41,7 +46,7 @@ OFFSETS = [(0,1),(0,2),(0,3),(1,0),(2,0),(3,0),
 I0 = 2.0
 SAMPLES = 10
 NT = 60
-TEST_LIMIT = 1000 # max test images
+TEST_LIMIT = 200 # max test images
 SEED = 1234
 
 rng = np.random.default_rng(SEED)
@@ -238,32 +243,41 @@ def classify(image):
 
     for c in range(10):
         circuits[c].h = h_image
-
         _, best_E = solvers[c].solve(
-            circuits[c],
-            n_shots=SAMPLES,
-            initial_state=initial,
-            return_best=True,
-            target_scales={"class": 1.0}
+            circuits[c], n_shots=SAMPLES, initial_state=initial,
+            return_best=True, target_scales={"class": 1.0}
         )
-
         E[c] = best_E.mean() + offsets[c]
 
     return E.argmin()
+
+def classify_chunk(indices):
+    return [(i, classify(x_test[i])) for i in indices]
 
 
 # ----------------------------------------------------------------------
 # Main code
 # ----------------------------------------------------------------------
 
-print(f"Running controlled-correlation demo ({N_PBITS} p-bits)...")
+if __name__ == "__main__":
+    t0 = time.perf_counter()
 
-correct = 0
-n = min(TEST_LIMIT, len(x_test))
+    print(f"Running controlled-correlation demo ({N_PBITS} p-bits, {N_WORKERS} workers)...")
 
-for i in range(n):
-    correct += classify(x_test[i]) == y_test[i]
-    if (i + 1) % 10 == 0:
-        print(f"\r{i+1}/{n}  accuracy: {100*correct/(i+1):.2f}%", end="", flush=True)
+    n = min(TEST_LIMIT, len(x_test))
+    chunks = np.array_split(np.arange(n), N_WORKERS)
 
-print(f"\nFinal accuracy: {100*correct/n:.2f}%")
+    results = Parallel(n_jobs=N_WORKERS, verbose=10)(
+        delayed(classify_chunk)(chunk) for chunk in chunks
+    )
+
+    pred = np.empty(n, dtype=int)
+    for chunk in results:
+        for i, p in chunk:
+            pred[i] = p
+
+    elapsed = time.perf_counter() - t0
+    correct = np.sum(pred == y_test[:n])
+
+    print(f"Final accuracy: {100*correct/n:.2f}%")
+    print(f"Elapsed: {elapsed:.1f} s ({elapsed/60:.1f} min)")
