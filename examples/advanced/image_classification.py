@@ -12,6 +12,7 @@ The current model uses 720 p-bits. The implementation is intentionally simple
 and currently unoptimized for speed.
 
 This is POC demo and classification accuracy can also be improved.
+Inference is slower/heavier than training in general.
 """
 from pathlib import Path
 from urllib.request import urlretrieve
