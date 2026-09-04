@@ -1,4 +1,4 @@
-from .utils import m_to_string, tsp_hist
+from .utils import m_to_string, tsp_hist, hypercube_metrics
 from .histplot import histplot, energyplot
 from .vin_vout import vin_vout
 from .plot3d import plot3d
@@ -15,5 +15,6 @@ __all__ = [
     "vin_vout",
     "plot3d",
     "visualize_tsp_route",
-    "hypercube_plot"
+    "hypercube_plot",
+    "hypercube_metrics"
 ]
