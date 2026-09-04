@@ -13,6 +13,9 @@ Calculation speed has been optimized, but it can be further improved.
 
 This is POC demo and classification accuracy can also be improved.
 Inference is slower/heavier than training in general.
+
+Results:
+    04/09/2026 On 1000 test images accuracy is 55%, takes 370s on a laptop
 """
 from pathlib import Path
 from urllib.request import urlretrieve
