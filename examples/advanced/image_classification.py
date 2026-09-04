@@ -8,8 +8,8 @@ The solver controls how these components are activated over time.
 Image evidence is applied through h, while each class is represented by a learned
 J/h correlation component that is gradually activated by CorrelationAnnealingSolver.
 
-The current model uses 720 p-bits. The implementation is intentionally simple
-and currently unoptimized for speed.
+The current model uses 720 p-bits. The implementation is intentionally simple.
+Calculation speed has been optimized, but it can be further improved.
 
 This is POC demo and classification accuracy can also be improved.
 Inference is slower/heavier than training in general.
