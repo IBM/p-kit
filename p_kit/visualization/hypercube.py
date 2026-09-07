@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
-from .utils import m_to_string
+from .utils import m_to_string, N_PCA_COMPONENTS, _relaxation, \
+    _pca_vs_noise, _separability
 
 # Above this many p-bits, {-1,+1}^n_pbits can no longer be enumerated (2^n
 # vertices) - e.g. a 128-p-bit reservoir has more states than atoms in the
@@ -16,9 +17,6 @@ MAX_EXACT_DIMS = 12
 # Above this many vertices, per-vertex bitstring labels are skipped to
 # avoid an unreadable plot.
 MAX_LABELED_VERTS = 64
-
-# How many leading principal components to compare against the noise null.
-N_PCA_COMPONENTS = 15
 
 
 def _nested_cube_coords(n, shrink=0.55):
@@ -94,40 +92,6 @@ def _hypercube_plot_exact(output, n_pbits):
     plt.show()
 
 
-def _pca_explained_variance(X):
-    Xc = X - X.mean(axis=0, keepdims=True)
-    _, S, _ = np.linalg.svd(Xc, full_matrices=False)
-    var = S ** 2
-    return var / var.sum()
-
-
-def _column_shuffle_null(X, rng, n_components, n_trials=20):
-    """Null PCA spectrum: independently permute each column (p-bit) across
-    samples. This preserves every p-bit's own marginal (its bias/frequency)
-    exactly while destroying all cross-p-bit and temporal correlation - the
-    fair 'no structure' baseline to compare the real spectrum against."""
-    spectra = np.zeros((n_trials, n_components))
-    noise = np.empty_like(X)
-    for t in range(n_trials):
-        for j in range(X.shape[1]):
-            noise[:, j] = rng.permutation(X[:, j])
-        spectra[t] = _pca_explained_variance(noise)[:n_components]
-    return spectra
-
-
-def _correlation_function(X, max_lag, n_pbits):
-    """C(dt) = <m(t).m(t+dt)> / n_pbits, the standard two-point overlap
-    used to characterize relaxation/mixing in stochastic spin dynamics.
-    Related to the mean Hamming distance at lag dt by
-    d_H(dt) = n_pbits * (1 - C(dt)) / 2."""
-    lags = np.arange(1, max_lag + 1)
-    C = np.empty(max_lag)
-    for i, dt in enumerate(lags):
-        overlap = (X[:-dt] * X[dt:]).sum(axis=1) / n_pbits
-        C[i] = overlap.mean()
-    return lags, C
-
-
 def _hypercube_plot_projected(output, n_pbits, labels=None):
     """Too many p-bits to enumerate exactly (2^n_pbits vertices - e.g. a
     128-p-bit reservoir has ~3.4e38 of them). A spatial scatter of a lossy
@@ -152,17 +116,13 @@ def _hypercube_plot_projected(output, n_pbits, labels=None):
       by time or raw position alone.
     """
     X = np.asarray(output, dtype=float)
-    n_samples = len(X)
     rng = np.random.default_rng(0)
 
     n_panels = 3 if labels is not None else 2
     fig = plt.figure(figsize=(6.5 * n_panels, 5.5))
 
     # --- panel 1: relaxation / correlation function ---
-    max_lag = max(1, min(300, n_samples // 3))
-    lags, C = _correlation_function(X, max_lag, n_pbits)
-    shuffled = X[rng.permutation(n_samples)]
-    baseline = (X * shuffled).sum(axis=1).mean() / n_pbits
+    lags, C, baseline, tau = _relaxation(X, n_pbits, rng)
 
     ax1 = fig.add_subplot(1, n_panels, 1)
     ax1.plot(lags, C, label="C(dt) = <m(t).m(t+dt)>/n")
@@ -170,15 +130,14 @@ def _hypercube_plot_projected(output, n_pbits, labels=None):
                 label=f"fully-mixed baseline ({baseline:.3f})")
     ax1.set_xlabel("lag dt (samples)")
     ax1.set_ylabel("overlap / correlation")
-    ax1.set_title("Relaxation: correlation vs. time lag")
+    ax1.set_title(f"Relaxation: correlation vs. time lag\n"
+                  f"(relaxation time: {tau:.0f} samples)")
     ax1.legend()
 
     # --- panel 2: PCA spectrum vs. noise null ---
-    n_components = min(N_PCA_COMPONENTS, n_pbits)
-    real_var = _pca_explained_variance(X)[:n_components]
-    null_spectra = _column_shuffle_null(X, rng, n_components)
-    null_mean = null_spectra.mean(axis=0)
-    null_std = null_spectra.std(axis=0)
+    real_var, null_mean, null_std, top3_z = _pca_vs_noise(
+        X, n_pbits, rng, N_PCA_COMPONENTS)
+    n_components = len(real_var)
 
     ax2 = fig.add_subplot(1, n_panels, 2)
     idx = np.arange(n_components)
@@ -187,31 +146,14 @@ def _hypercube_plot_projected(output, n_pbits, labels=None):
             label="shuffled-column noise")
     ax2.set_xlabel("principal component")
     ax2.set_ylabel("explained variance ratio")
-    top3_excess = real_var[:3].sum() - null_mean[:3].sum()
-    top3_z = top3_excess / max(null_std[:3].sum(), 1e-12)
     ax2.set_title(f"PCA spectrum vs. noise null\n"
                   f"(top-3 excess: {top3_z:.0f} std devs above noise)")
     ax2.legend()
 
     # --- panel 3 (optional): projection colored by external label ---
     if labels is not None:
-        labels = np.asarray(labels)
-        Xc = X - X.mean(axis=0, keepdims=True)
-        _, _, Vt = np.linalg.svd(Xc, full_matrices=False)
-        proj = Xc @ Vt[:3].T
-
-        grand_mean = proj.mean(axis=0)
-        between = within = 0.0
-        for g in np.unique(labels):
-            pts = proj[labels == g]
-            if len(pts) < 2:
-                continue
-            gm = pts.mean(axis=0)
-            between += len(pts) * np.sum((gm - grand_mean) ** 2)
-            within += np.sum((pts - gm) ** 2)
-        sep_ratio = between / within if within > 0 else float("nan")
-
-        _, label_codes = np.unique(labels, return_inverse=True)
+        proj, sep_ratio = _separability(X, labels)
+        _, label_codes = np.unique(np.asarray(labels), return_inverse=True)
         ax3 = fig.add_subplot(1, n_panels, 3, projection="3d")
         ax3.scatter(proj[:, 0], proj[:, 1], proj[:, 2],
                     c=label_codes, cmap="tab20", s=25, depthshade=False)
@@ -221,7 +163,7 @@ def _hypercube_plot_projected(output, n_pbits, labels=None):
 
     fig.suptitle(f"{{-1,+1}}^{n_pbits} has {2 ** n_pbits:.3g} vertices "
                  f"(too many to enumerate)\n"
-                 f"statistical view of {n_samples} sampled states")
+                 f"statistical view of {len(X)} sampled states")
     fig.tight_layout()
     plt.show()
 
