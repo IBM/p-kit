@@ -250,9 +250,9 @@ def classify(image):
             circuits[c], n_shots=SAMPLES, initial_state=initial,
             return_best=True, target_scales={"class": 1.0}
         )
-        E[c] = best_E.mean() + offsets[c]
+        E[c] = best_E.mean() - I0 * offsets[c]
 
-    return E.argmin()
+    return E.argmax()
 
 def classify_chunk(indices):
     return [(i, classify(x_test[i])) for i in indices]

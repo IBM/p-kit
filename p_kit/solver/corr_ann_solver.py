@@ -151,14 +151,13 @@ class CorrelationAnnealingSolver(Solver):
             raise ValueError("block initial_state must contain exactly one +1 per block")
         return m
 
-    @staticmethod
-    def _target_energy(m, fields, base_h, comp_h, scales):
+    def _target_energy(self, m, fields, base_h, comp_h, scales):
         field = fields["base"].copy()
         h = base_h.copy()
         for name, scale in scales.items():
             field += scale * fields[name]
             h += scale * comp_h[name]
-        return -0.5 * np.sum(m * field, axis=1) - m @ h
+        return self.i0 * (0.5 * np.sum(m * field, axis=1) + m @ h)
 
     def _apply_block_delta(self, field, live, delta, blk, J, layout, scale=1.0):
         K = self.block_size
@@ -254,12 +253,18 @@ class CorrelationAnnealingSolver(Solver):
 
         if not return_final and not return_best:
             all_m = np.zeros((self.Nt, n_shots, c.n_pbits))
-            all_E = np.zeros((self.Nt, n_shots))
-            all_scales = []
+            all_I = np.zeros((self.Nt, c.n_pbits))
+            E = np.zeros(self.Nt)
 
         for run in range(self.Nt):
             scales = {name: self._schedule_value(name, run) for name in components}
             beta = float(annealing_func(self, run))
+
+            if not return_final and not return_best:
+                live = fields["base"] + base_h
+                for name, scale in scales.items():
+                    live += scale * (fields[name] + comp_h[name])
+                all_I[run] = (beta * live)[0]
 
             if self.block_size is None:
                 m = self._binary_sweep(m, base_J, comp_J, base_h, comp_h,
@@ -269,21 +274,20 @@ class CorrelationAnnealingSolver(Solver):
                                       fields, scales, layouts, beta)
 
             target_E = self._target_energy(m, fields, base_h, comp_h, target)
-            improved = target_E < best_E
+            improved = target_E > best_E
             best_E[improved] = target_E[improved]
             best_m[improved] = m[improved]
 
             if not return_final and not return_best:
-                all_m[run], all_E[run] = m, target_E
-                all_scales.append(scales)
+                all_m[run], E[run] = m, target_E[0]
 
         if return_best:
             return best_m, best_E
         if return_final:
             return m[0] if n_shots == 1 else m
         if n_shots == 1:
-            return all_m[:, 0, :], all_E[:, 0], all_scales
-        return all_m, all_E, all_scales
+            return all_I, all_m[:, 0, :], E
+        return all_m
 
     def copy(self):
         return CorrelationAnnealingSolver(
