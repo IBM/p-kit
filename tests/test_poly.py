@@ -44,9 +44,62 @@ def test_quadratic_h():
 
 
 def test_quadratic_J():
-    # 3*x^2 with n_bits=2: J[0,1] = 3/4 * 2^0 * 2^1 = 1.5
+    # 3*x^2 with n_bits=2: J[0,1] = 3/2 * 2^0 * 2^1 = 3.0
     circuit = PolyOptimizer({('x', 'x'): 3}, ['x'], n_bits=2, minimize=False)
-    assert np.isclose(circuit.J[0, 1], 1.5)
+    assert np.isclose(circuit.J[0, 1], 3.0)
+
+
+def _landscape(circuit, coeffs, variables, n_bits):
+    """Yield (f(x), F(s)) over every p-bit state.
+
+    F is the quantity the solvers actually see: h.s + 1/2 s.J.s, matching
+    CaSuDaSolver's energy readout and the gradient its update rule ascends.
+    """
+    import itertools
+    h = np.asarray(circuit.h).reshape(-1)
+    for bits in itertools.product([-1, 1], repeat=len(variables) * n_bits):
+        s = np.array(bits, dtype=float)
+        F = s @ h + 0.5 * (s @ circuit.J @ s)
+        vals = circuit.decode(s)
+        f = 0.0
+        for mono, c in coeffs.items():
+            if len(mono) == 1:
+                f += c * vals[mono[0]]
+            elif len(mono) == 2:
+                f += c * vals[mono[0]] * vals[mono[1]]
+        yield f, F
+
+
+@pytest.mark.parametrize("coeffs,variables,n_bits", [
+    ({('x',): -0.75, ('y',): -0.75, ('x', 'y'): 1}, ['x', 'y'], 1),
+    ({('x', 'x'): 1, ('x',): -3}, ['x'], 2),
+    ({('x', 'x'): 2, ('y', 'y'): -1, ('x', 'y'): 3, ('x',): 1}, ['x', 'y'], 2),
+])
+def test_encoding_is_faithful(coeffs, variables, n_bits):
+    """J/h must reproduce the polynomial up to an additive constant.
+
+    Comparing only argmin is not enough: a mis-scaled coupling flattens the
+    landscape into ties that an argmin check passes by arbitrary tie-break.
+    """
+    circuit = PolyOptimizer(coeffs, variables, n_bits=n_bits, minimize=False)
+    resid = np.array([F - f for f, F in _landscape(circuit, coeffs, variables, n_bits)])
+    assert np.allclose(resid, resid[0])
+
+
+def test_cross_term_ranks_optimum_strictly():
+    # min of -0.75x - 0.75y + xy over {0,1}^2 is -0.75 at (1,0) and (0,1);
+    # (1,1) scores -0.5 and must stay strictly worse. A halved xy coupling
+    # ties all three.
+    coeffs = {('x',): -0.75, ('y',): -0.75, ('x', 'y'): 1}
+    circuit = PolyOptimizer(coeffs, ['x', 'y'], n_bits=1, minimize=True)
+    # minimize=True negates, and the solvers ascend F, so the optimum is argmax F
+    best = max(F for _, F in _landscape(circuit, coeffs, ['x', 'y'], 1))
+    ranked = sorted(
+        (F, f) for f, F in _landscape(circuit, coeffs, ['x', 'y'], 1)
+    )
+    assert np.isclose(ranked[-1][1], -0.75)
+    assert not np.isclose(ranked[-1][0], ranked[-3][0])
+    assert np.isclose(best, ranked[-1][0])
 
 
 def test_minimize_negates():

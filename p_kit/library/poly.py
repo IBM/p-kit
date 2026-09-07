@@ -79,13 +79,18 @@ class PolyOptimizer(PCircuit):
             elif mono[0] == mono[1]:
                 # Quadratic x_v^2:
                 #   h contribution:  coeff * C * 2^k  per bit k
-                #   J contribution (j<k):  coeff/4 * 2^j * 2^k  (factor-of-2 symmetry accounted for)
+                #   J contribution (j<k):  coeff/2 * 2^j * 2^k
+                # The (j,k) and (k,j) terms of the double sum both survive, so
+                # the s_j*s_k coefficient is 2 * coeff/4 * 2^j * 2^k. Solvers
+                # read J through the 1/2 * s.J.s convention (see CaSuDaSolver),
+                # under which a symmetric pair contributes exactly J[j,k] --
+                # not 2*J[j,k] -- so w is that coefficient, undivided.
                 v = mono[0]
                 for k in range(n):
                     self.h[self._idx(v, k)] += coeff * C * (2 ** k)
                 for j in range(n):
                     for k in range(j + 1, n):
-                        w = coeff / 4 * (2 ** j) * (2 ** k)
+                        w = coeff / 2 * (2 ** j) * (2 ** k)
                         ij, ik = self._idx(v, j), self._idx(v, k)
                         self.J[ij, ik] += w
                         self.J[ik, ij] += w
@@ -93,7 +98,10 @@ class PolyOptimizer(PCircuit):
             else:
                 # Cross-term x_u * x_v (u != v):
                 #   h contribution:  coeff * C/2 * 2^k  per bit k, for both variables
-                #   J contribution:  coeff/8 * 2^j * 2^k  (factor-of-2 symmetry accounted for)
+                #   J contribution:  coeff/4 * 2^j * 2^k
+                # b_j*b_k expands to (1 + s_j + s_k + s_j*s_k)/4, so the pair
+                # coefficient is coeff/4 * 2^j * 2^k. See the x_v^2 branch for
+                # why that goes into J undivided.
                 u, v = mono
                 for k in range(n):
                     wk = 2 ** k
@@ -101,7 +109,7 @@ class PolyOptimizer(PCircuit):
                     self.h[self._idx(v, k)] += coeff * C / 2 * wk
                 for j in range(n):
                     for k in range(n):
-                        w = coeff / 8 * (2 ** j) * (2 ** k)
+                        w = coeff / 4 * (2 ** j) * (2 ** k)
                         ij, ik = self._idx(u, j), self._idx(v, k)
                         self.J[ij, ik] += w
                         self.J[ik, ij] += w
