@@ -1,7 +1,7 @@
 """
-This is an EEG P300 classification and generation demo. The objective is to
-use a PCircuit as much as possible for both EEG classification and EEG
-generation.
+This is an EEG P300 classification and generation demo. It is a first proof
+of concept towards heavier use of probabilistic circuits. The EEG generation is
+where probabilistic sampling is used.
 
 I have noticed that the following algorithm is both simple and provides very
 good classification results. In this demo it is implemented as FlatLR:
@@ -13,6 +13,20 @@ The demo runs in 3 modes:
 - classify - compares classical FlatLR with JointPBit, a hybrid Fourier + PCircuit version
 - generate - uses the same PCircuit architecture for P300 generation, independently for each subject
 - both - demonstrates classification and generation
+
+Training:
+classical parameter estimation
+-> compile the learned parameters into J, h of a probabilistic PCircuit
+
+Classification:
+observed EEG p-bits
+-> exact conditional inference P(class | EEG)
+-> no stochastic solver needed
+
+Generation:
+class p-bit clamped
+-> stochastic PCircuit sampling
+-> BitPlane + BlockGibbs
 
 Results:
 - Classification results are quite good. The demo tests 5 P300 datasets from MOABB.
@@ -344,14 +358,15 @@ def classification_dataset(ds, subjects, fs, dur):
         print(f"  {pipe:9s}: {x.mean():.4f} ± {x.std(ddof=1) if len(x)>1 else 0:.4f} (n={len(x)})")
     return subject
 
-def plot_subject(subject, RP, GP, p300_r, diff_r):
+def plot_subject(subject, RP, GP, p300_r):
     v = max(np.abs(RP).max(), np.abs(GP).max())
     fig, ax = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
     ax[0].imshow(RP, aspect="auto", origin="lower", vmin=-v, vmax=v)
     ax[1].imshow(GP, aspect="auto", origin="lower", vmin=-v, vmax=v)
-    ax[0].set_title("Held-out real P300"); ax[1].set_title("Generated P300")
+    ax[0].set_title("Held-out real P300")
+    ax[1].set_title("Generated P300")
     ax[0].set_ylabel("Channel")
-    fig.suptitle(f"Subject {subject}: P300 r={p300_r:.3f}, difference r={diff_r:.3f}")
+    fig.suptitle(f"Subject {subject}: P300 r={p300_r:.3f}")
     plt.show()
 
 def generation_subject(ds, subject, fs, dur, pn, ps, seed, index, total):
@@ -385,7 +400,7 @@ def generation_subject(ds, subject, fs, dur, pn, ps, seed, index, total):
     }
     print(f"{tag}: done | P={row['p300']:.3f} G={row['global']:.3f} E={row['edge']:.3f}")
     if PLOT:
-        plot_subject(subject, RP, GP, row["p300"], row["diff"])
+        plot_subject(subject, RP, GP, row["p300"])
     return row
 
 def generation_dataset(ds, subjects, fs, dur):
