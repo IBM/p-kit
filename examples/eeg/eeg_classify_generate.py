@@ -16,7 +16,7 @@ The demo runs in 3 modes:
 
 Results:
 - Classification results are quite good. The demo tests 5 P300 datasets from MOABB.
-- Generation is good, but less impressive. This might partly be because there is
+- Generation is meaningful, but less impressive. This might partly be because there is
   limited data per subject and the generation method is not fully optimized.
 - Processing time is reasonable.
 
@@ -53,6 +53,19 @@ Result1:
     Global spectral structure: r=0.4712 vs real-real 0.7729.
     Precision-edge structure: r=0.1673 vs real-real 0.8711.
     2 minutes
+    
+Result 2:
+
+    5 datasets, subjects 135:
+
+    CLASSIFICATION — MOABB WithinSession
+      JointPBit : AUC=0.8551 ± 0.0770
+      FlatLR    : AUC=0.8632 ± 0.0713
+    P300 GENERATION — held-out real EEG
+      Mean ERP          : r=0.3564   real-real=0.6434
+      Global structure  : r=0.1311   real-real=0.5141
+      Precision edges   : r=0.2789   real-real=0.7996
+
 """
 
 import copy, re, warnings
