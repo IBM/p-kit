@@ -145,4 +145,8 @@ class PCircuit:
             name: {"J": c["J"].copy(), "h": c["h"].copy()}
             for name, c in self._correlation_components.items()
         }
+        if hasattr(self, "_pkit_block_groups"):
+            new_circuit._pkit_block_groups = [
+                g.copy() for g in self._pkit_block_groups
+            ]
         return new_circuit
