@@ -24,15 +24,18 @@ For problems requiring very accurate sampling of the target Boltzmann
 distribution, especially as problem size grows, GibbsSolver may still
 provide better distribution fidelity.
 """
-
 from __future__ import annotations
+
+import inspect
 import itertools
 import warnings
 from dataclasses import dataclass
 from statistics import NormalDist
+
 import numpy as np
 
-EPS=1e-9
+EPS = 1e-9
+
 
 @dataclass
 class SPDMapping:
@@ -40,6 +43,7 @@ class SPDMapping:
     A: np.ndarray
     shift: float
     min_eig: float
+
 
 @dataclass
 class MappingQuality:
@@ -51,131 +55,457 @@ class MappingQuality:
     condition_score: float
     n_states: int
 
-def sanitize_jh(J,h):
-    J=np.asarray(J,float); h=np.asarray(h,float).reshape(-1)
-    if J.shape!=(h.size,h.size): raise ValueError(f"J {J.shape}, h {h.shape}")
-    J=.5*(J+J.T); J=J.copy(); np.fill_diagonal(J,0.)
-    return J,h
+
+def sanitize_jh(J, h):
+    """Symmetrize J, zero its diagonal, and flatten h."""
+    J = np.asarray(J, dtype=float)
+    h = np.asarray(h, dtype=float).reshape(-1)
+    if J.shape != (h.size, h.size):
+        raise ValueError(
+            f"J has shape {J.shape}, expected {(h.size, h.size)} to match h"
+        )
+    J = 0.5 * (J + J.T)
+    np.fill_diagonal(J, 0.0)
+    return J, h
+
 
 def dense_jh(obj):
-    if hasattr(obj,"J") and hasattr(obj,"h"):
-        J=np.asarray(obj.J,float); h=np.asarray(obj.h,float).reshape(-1)
-        if J.ndim==2 and J.shape==(h.size,h.size): return sanitize_jh(J,h)
-    if hasattr(obj,"synthesize"):
-        x=obj.synthesize(format="dense")
-        if isinstance(x,tuple) and len(x)>=2: return sanitize_jh(x[0],x[1])
-        if isinstance(x,dict) and "J" in x and "h" in x: return sanitize_jh(x["J"],x["h"])
-    if hasattr(obj,"circuit"): return dense_jh(obj.circuit)
-    raise TypeError("Cannot extract dense J,h")
+    """Extract dense (J, h) from a p-kit circuit-like object."""
+    if hasattr(obj, "J") and hasattr(obj, "h"):
+        J = np.asarray(obj.J, dtype=float)
+        h = np.asarray(obj.h, dtype=float).reshape(-1)
+        if J.ndim == 2 and J.shape == (h.size, h.size):
+            return sanitize_jh(J, h)
 
-def states(n): return np.asarray(list(itertools.product((-1.,1.),repeat=n)))
+    if hasattr(obj, "synthesize"):
+        synthesized = obj.synthesize(format="dense")
+        if isinstance(synthesized, tuple) and len(synthesized) >= 2:
+            return sanitize_jh(synthesized[0], synthesized[1])
+        if isinstance(synthesized, dict) and "J" in synthesized and "h" in synthesized:
+            return sanitize_jh(synthesized["J"], synthesized["h"])
 
-def energy(S,J,h):
-    S=np.asarray(S,float); S=S[None,:] if S.ndim==1 else S
-    return -.5*np.einsum("bi,ij,bj->b",S,J,S)-S@h
+    if hasattr(obj, "circuit"):
+        return dense_jh(obj.circuit)
 
-def ising_to_spd(J,h,i0=.8,margin=.05):
-    J,h=sanitize_jh(J,h); n=h.size
-    A=np.zeros((n+1,n+1)); A[:n,:n]=J; A[:n,n]=h; A[n,:n]=h; A*=i0
-    shift=float(np.linalg.eigvalsh(A)[-1]+margin); K=shift*np.eye(n+1)-A; me=float(np.linalg.eigvalsh(K)[0])
-    if me<=0: raise RuntimeError("SPD mapping failed")
-    return SPDMapping(K,A,shift,me)
+    raise TypeError("Cannot extract dense J,h from object")
+
+
+def states(n):
+    """Enumerate all {-1,+1} states."""
+    return np.asarray(list(itertools.product((-1.0, 1.0), repeat=n)))
+
+
+def energy(S, J, h):
+    """Return Ising energies for one state or a batch of states."""
+    S = np.asarray(S, dtype=float)
+    if S.ndim == 1:
+        S = S[None, :]
+    return -0.5 * np.einsum("bi,ij,bj->b", S, J, S) - S @ h
+
+
+def ising_to_spd(J, h, i0=0.8, margin=0.05):
+    """Map Ising parameters to an SPD precision matrix."""
+    J, h = sanitize_jh(J, h)
+    n = h.size
+
+    A = np.zeros((n + 1, n + 1))
+    A[:n, :n] = J
+    A[:n, n] = h
+    A[n, :n] = h
+    A *= i0
+
+    top_eig = float(np.linalg.eigvalsh(A)[-1])
+    shift = top_eig + margin
+    K = shift * np.eye(n + 1) - A
+    min_eig = float(np.linalg.eigvalsh(K)[0])
+
+    if min_eig <= 0:
+        raise RuntimeError(
+            "SPD mapping failed: "
+            f"min eigenvalue {min_eig:.3e} <= 0 "
+            f"(top_eig={top_eig:.3e}, margin={margin}, i0={i0})"
+        )
+    return SPDMapping(K, A, shift, min_eig)
+
 
 def _ranks(x):
-    x=np.asarray(x); order=np.argsort(x,kind="mergesort"); r=np.empty(len(x),float); i=0
-    while i<len(x):
-        j=i+1
-        while j<len(x) and np.isclose(x[order[j]],x[order[i]],rtol=1e-12,atol=1e-12): j+=1
-        r[order[i:j]]=(i+j-1)/2.; i=j
-    return r
+    x = np.asarray(x)
+    order = np.argsort(x, kind="mergesort")
+    ranks = np.empty(len(x), dtype=float)
+    i = 0
 
-def mapping_quality(J,h,m,max_condition=1e6,max_states=1<<16,random_states=20000,seed=12345):
-    J,h=sanitize_jh(J,h); n=h.size; total=(1<<n) if n<63 else max_states+1
-    S=states(n) if total<=max_states else np.random.default_rng(seed).choice((-1.,1.),size=(random_states,n))
-    E=energy(S,J,h); Q=np.column_stack((S,np.ones(len(S)))); Z=np.einsum("bi,ij,bj->b",Q,m.K,Q)
-    a,b=np.linalg.lstsq(np.column_stack((E,np.ones_like(E))),Z,rcond=None)[0]; Zh=a*E+b
-    rmse=float(np.sqrt(np.mean((Z-Zh)**2))); scale=float(np.ptp(Zh)); nrmse=0. if scale<=EPS and rmse<=1e-12 else (float("inf") if scale<=EPS else rmse/scale)
-    rE,rZ=_ranks(E),_ranks(Z); rank=float(np.corrcoef(rE,rZ)[0,1]) if len(E)>1 and np.std(rE)>0 and np.std(rZ)>0 else 1.
-    fidelity=0. if a<=0 or not np.isfinite(nrmse) else float(np.clip(1.-nrmse,0.,1.)); cond=float(np.linalg.cond(m.K)); cscore=float(min(1.,max_condition/max(cond,1.)))
-    return MappingQuality(fidelity*cscore,fidelity,float(nrmse),rank,cond,cscore,len(S))
+    while i < len(x):
+        j = i + 1
+        while j < len(x) and np.isclose(
+            x[order[j]], x[order[i]], rtol=1e-12, atol=1e-12
+        ):
+            j += 1
+        ranks[order[i:j]] = (i + j - 1) / 2.0
+        i = j
+    return ranks
 
-def mapping_identity_error(J,h,m,i0=.8,max_states=1<<16):
-    n=len(h)
-    if (1<<n)>max_states: return float("nan")
-    S=states(n); Q=np.column_stack((S,np.ones(len(S))))
-    return float(np.max(np.abs(np.einsum("bi,ij,bj->b",Q,m.K,Q)-(m.shift*(n+1)+2.*i0*energy(S,J,h)))))
+
+def mapping_quality(
+    J,
+    h,
+    mapping,
+    max_condition=1e6,
+    max_states=1 << 16,
+    random_states=20000,
+    seed=12345,
+):
+    """Measure energy-landscape fidelity and numerical conditioning."""
+    J, h = sanitize_jh(J, h)
+    n = h.size
+    total = (1 << n) if n < 63 else max_states + 1
+
+    if total <= max_states:
+        S = states(n)
+    else:
+        rng = np.random.default_rng(seed)
+        S = rng.choice((-1.0, 1.0), size=(random_states, n))
+
+    E = energy(S, J, h)
+    Q = np.column_stack((S, np.ones(len(S))))
+    Z = np.einsum("bi,ij,bj->b", Q, mapping.K, Q)
+
+    design = np.column_stack((E, np.ones_like(E)))
+    a, b = np.linalg.lstsq(design, Z, rcond=None)[0]
+    fitted = a * E + b
+
+    rmse = float(np.sqrt(np.mean((Z - fitted) ** 2)))
+    scale = float(np.ptp(fitted))
+    if scale <= EPS:
+        nrmse = 0.0 if rmse <= 1e-12 else float("inf")
+    else:
+        nrmse = rmse / scale
+
+    rank_E = _ranks(E)
+    rank_Z = _ranks(Z)
+    if len(E) > 1 and np.std(rank_E) > 0 and np.std(rank_Z) > 0:
+        rank = float(np.corrcoef(rank_E, rank_Z)[0, 1])
+    else:
+        rank = 1.0
+
+    if a <= 0 or not np.isfinite(nrmse):
+        fidelity = 0.0
+    else:
+        fidelity = float(np.clip(1.0 - nrmse, 0.0, 1.0))
+
+    condition = float(np.linalg.cond(mapping.K))
+    condition_score = float(min(1.0, max_condition / max(condition, 1.0)))
+    score = fidelity * condition_score
+
+    return MappingQuality(
+        score=score,
+        fidelity=fidelity,
+        nrmse=float(nrmse),
+        rank=rank,
+        condition=condition,
+        condition_score=condition_score,
+        n_states=len(S),
+    )
+
+
+def mapping_identity_error(J, h, mapping, i0=0.8, max_states=1 << 16):
+    """Check the exact quadratic identity when full enumeration is feasible."""
+    n = len(h)
+    if (1 << n) > max_states:
+        return float("nan")
+
+    S = states(n)
+    Q = np.column_stack((S, np.ones(len(S))))
+    mapped_energy = np.einsum("bi,ij,bj->b", Q, mapping.K, Q)
+    expected = mapping.shift * (n + 1) + 2.0 * i0 * energy(S, J, h)
+    return float(np.max(np.abs(mapped_energy - expected)))
+
 
 def spd_eigh(X):
-    e,V=np.linalg.eigh(.5*(X+X.T)); return np.maximum(e,EPS),V
+    """Symmetric eigendecomposition with a positive eigenvalue floor."""
+    eigenvalues, eigenvectors = np.linalg.eigh(0.5 * (X + X.T))
+    return np.maximum(eigenvalues, EPS), eigenvectors
 
-def spd_pow(X,p):
-    e,V=spd_eigh(X); return (V*(e**p))@V.T
 
-def riem_log(X,Y):
-    H=spd_pow(X,.5); Hi=spd_pow(X,-.5); e,V=spd_eigh(Hi@Y@Hi)
-    return H@((V*np.log(e))@V.T)@H
+def spd_pow(X, power):
+    eigenvalues, eigenvectors = spd_eigh(X)
+    return (eigenvectors * (eigenvalues**power)) @ eigenvectors.T
 
-def riem_exp(X,Vt):
-    H=spd_pow(X,.5); Hi=spd_pow(X,-.5); Z=.5*(Hi@Vt@Hi+(Hi@Vt@Hi).T); e,V=np.linalg.eigh(Z)
-    return H@((V*np.exp(np.clip(e,-30.,30.)))@V.T)@H
 
-def riem_dist(X,Y):
-    e,_=spd_eigh(spd_pow(X,-.5)@Y@spd_pow(X,-.5)); return float(np.linalg.norm(np.log(e)))
+def riem_log(X, Y):
+    """Affine-invariant Riemannian logarithm Log_X(Y)."""
+    sqrt_X = spd_pow(X, 0.5)
+    inv_sqrt_X = spd_pow(X, -0.5)
+    eigenvalues, eigenvectors = spd_eigh(inv_sqrt_X @ Y @ inv_sqrt_X)
+    inner = (eigenvectors * np.log(eigenvalues)) @ eigenvectors.T
+    return sqrt_X @ inner @ sqrt_X
+
+
+def riem_exp(X, tangent):
+    """Affine-invariant Riemannian exponential Exp_X(tangent)."""
+    sqrt_X = spd_pow(X, 0.5)
+    inv_sqrt_X = spd_pow(X, -0.5)
+    whitened = inv_sqrt_X @ tangent @ inv_sqrt_X
+    whitened = 0.5 * (whitened + whitened.T)
+    eigenvalues, eigenvectors = np.linalg.eigh(whitened)
+    exp_values = np.exp(np.clip(eigenvalues, -30.0, 30.0))
+    inner = (eigenvectors * exp_values) @ eigenvectors.T
+    return sqrt_X @ inner @ sqrt_X
+
+
+def riem_dist(X, Y):
+    """Affine-invariant Riemannian distance."""
+    inv_sqrt_X = spd_pow(X, -0.5)
+    eigenvalues, _ = spd_eigh(inv_sqrt_X @ Y @ inv_sqrt_X)
+    return float(np.linalg.norm(np.log(eigenvalues)))
+
 
 def to_corr(X):
-    e,V=spd_eigh(X); X=(V*e)@V.T; d=np.sqrt(np.maximum(np.diag(X),EPS)); C=X/np.outer(d,d)
-    return .5*(C+C.T)+EPS*np.eye(len(C))
+    """Project an SPD matrix to an SPD correlation matrix."""
+    eigenvalues, eigenvectors = spd_eigh(X)
+    X = (eigenvectors * eigenvalues) @ eigenvectors.T
+    scale = np.sqrt(np.maximum(np.diag(X), EPS))
+    corr = X / np.outer(scale, scale)
+    return 0.5 * (corr + corr.T) + EPS * np.eye(len(corr))
 
-def target_corr(m,n): return to_corr(np.linalg.inv(m.K)[:n,:n])
 
-def gaussian(rng,C):
-    e,V=spd_eigh(C); return V@(np.sqrt(e)*rng.normal(size=len(e)))
+def target_corr(mapping, n):
+    """Correlation matrix induced by the mapped SPD precision."""
+    covariance = np.linalg.solve(mapping.K, np.eye(mapping.K.shape[0]))
+    return to_corr(covariance[:n, :n])
+
+
+def gaussian(rng, covariance):
+    """Sample a zero-mean Gaussian with the requested covariance."""
+    eigenvalues, eigenvectors = spd_eigh(covariance)
+    z = rng.normal(size=len(eigenvalues))
+    return eigenvectors @ (np.sqrt(eigenvalues) * z)
+
 
 class SPDSolver:
-    
-    def __init__(self,Nt=10000,dt=.1667,i0=.8,seed=None,mode="fast",margin=.05,min_mapping_score=.999,max_condition=1e6,rate=.08,noise=.025,flip_prob=.18,fall_back_solver=None,verbose=True):
-        if Nt<=0 or i0<=0 or margin<=0 or rate<=0 or noise<0 or not 0<flip_prob<.5: raise ValueError("invalid solver parameter")
-        if mode not in ("fast","analog"): raise ValueError("mode must be 'fast' or 'analog'")
-        if not 0<=min_mapping_score<=1 or max_condition<=0: raise ValueError("invalid mapping threshold")
-        self.Nt=Nt; self.dt=dt; self.i0=i0; self.seed=seed; self.mode=mode; self.margin=margin; self.min_mapping_score=min_mapping_score; self.max_condition=max_condition
-        self.rate=rate; self.noise=noise; self.flip_prob=flip_prob; self.fall_back_solver=fall_back_solver; self.verbose=verbose
-        self.mapping_=self.mapping_quality_=self.mapping_error_=self.manifold_state_=self.energies_=None
-        self.acceptance_rate_=self.final_distance_=None; self.used_fallback_=False; self.fallback_reason_=None; self.fallback_solver_=None
+    def __init__(
+        self,
+        Nt=10000,
+        dt=0.1667,
+        i0=0.8,
+        seed=None,
+        mode="fast",
+        margin=0.05,
+        min_mapping_score=0.999,
+        max_condition=1e6,
+        rate=0.08,
+        noise=0.025,
+        flip_prob=0.18,
+        fall_back_solver=None,
+        verbose=True,
+    ):
+        if (
+            Nt <= 0
+            or i0 <= 0
+            or margin <= 0
+            or rate <= 0
+            or noise < 0
+            or not 0 < flip_prob < 0.5
+        ):
+            raise ValueError("invalid solver parameter")
+        if mode not in ("fast", "analog"):
+            raise ValueError("mode must be 'fast' or 'analog'")
+        if not 0 <= min_mapping_score <= 1 or max_condition <= 0:
+            raise ValueError("invalid mapping threshold")
+
+        self.Nt = Nt
+        self.dt = dt
+        self.i0 = i0
+        self.seed = seed
+        self.mode = mode
+        self.margin = margin
+        self.min_mapping_score = min_mapping_score
+        self.max_condition = max_condition
+        self.rate = rate
+        self.noise = noise
+        self.flip_prob = flip_prob
+        self.fall_back_solver = fall_back_solver
+        self.verbose = verbose
+
+        self.mapping_ = None
+        self.mapping_quality_ = None
+        self.mapping_error_ = None
+        self.manifold_state_ = None
+        self.energies_ = None
+        self.acceptance_rate_ = None
+        self.final_distance_ = None
+        self.used_fallback_ = False
+        self.fallback_reason_ = None
+        self.fallback_solver_ = None
+
     def _make_fallback(self):
-        fb=self.fall_back_solver
-        if fb is None: return None
-        if not isinstance(fb,type) and hasattr(fb,"solve"): return fb
-        if not callable(fb): raise TypeError("fall_back_solver must be a solver instance or callable")
-        for kw in ({"Nt":self.Nt,"dt":self.dt,"i0":self.i0,"seed":self.seed},{"Nt":self.Nt,"dt":self.dt,"i0":self.i0},{"Nt":self.Nt,"i0":self.i0},{}):
-            try: return fb(**kw)
-            except TypeError: pass
-        raise TypeError("could not instantiate fall_back_solver")
-    def _run_fallback(self,obj,reason):
-        fb=self._make_fallback()
-        if fb is None: raise RuntimeError(reason)
-        self.used_fallback_=True; self.fallback_reason_=reason; self.fallback_solver_=fb
-        name=fb.__class__.__name__; warnings.warn(f"SPDSolver: {reason}; falling back to {name}.",RuntimeWarning,stacklevel=2)
-        try: out=fb.solve(obj)
-        except (TypeError,AttributeError):
-            if not hasattr(obj,"circuit"): raise
-            out=fb.solve(obj.circuit)
-        if not isinstance(out,tuple) or len(out)<2: raise TypeError("fallback solver must return (I, m)")
-        return out[0],out[1]
-    def solve(self,circuit):
-        self.used_fallback_=False; self.fallback_reason_=None; self.fallback_solver_=None
-        J,h=dense_jh(circuit); n=h.size; m=ising_to_spd(J,h,self.i0,self.margin); q=mapping_quality(J,h,m,self.max_condition)
-        self.mapping_=m; self.mapping_quality_=q; self.mapping_error_=mapping_identity_error(J,h,m,self.i0)
-        if self.verbose: print(f"SPD map score={q.score:.6f} fidelity={q.fidelity:.6f} rank={q.rank:.6f} nrmse={q.nrmse:.2e} cond={q.condition:.2e}")
-        if q.score<self.min_mapping_score:
-            return self._run_fallback(circuit,f"mapping score {q.score:.6f} below minimum {self.min_mapping_score:.6f}")
-        rng=np.random.default_rng(self.seed); T=target_corr(m,n); X=T.copy() if self.mode=="fast" else np.eye(n); s=rng.choice((-1.,1.),size=n); E=float(energy(s,J,h)[0]); th=NormalDist().inv_cdf(1.-self.flip_prob)
-        all_I=np.empty((self.Nt,n)); all_m=np.empty((self.Nt,n)); all_E=np.empty(self.Nt); accepted=0
+        """Return a fallback solver without exception-driven API probing."""
+        fallback = self.fall_back_solver
+        if fallback is None:
+            return None
+
+        if not isinstance(fallback, type):
+            if not callable(getattr(fallback, "solve", None)):
+                raise TypeError(
+                    "fall_back_solver must expose solve(circuit)"
+                )
+            return fallback
+
+        available = {
+            "Nt": self.Nt,
+            "dt": self.dt,
+            "i0": self.i0,
+            "seed": self.seed,
+        }
+        signature = inspect.signature(fallback)
+        parameters = signature.parameters.values()
+        accepts_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters
+        )
+
+        if accepts_kwargs:
+            kwargs = available
+        else:
+            accepted_names = {
+                parameter.name
+                for parameter in parameters
+                if parameter.kind
+                in (
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                )
+            }
+            kwargs = {
+                name: value
+                for name, value in available.items()
+                if name in accepted_names
+            }
+
+        missing = [
+            parameter.name
+            for parameter in parameters
+            if parameter.default is inspect.Parameter.empty
+            and parameter.kind
+            in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+            and parameter.name not in kwargs
+        ]
+        if missing:
+            raise TypeError(
+                f"cannot instantiate fallback solver {fallback.__name__}: "
+                f"missing required constructor arguments {missing}; "
+                "pass a configured solver instance instead"
+            )
+
+        instance = fallback(**kwargs)
+        if not callable(getattr(instance, "solve", None)):
+            raise TypeError(
+                f"fallback solver {fallback.__name__} must expose solve(circuit)"
+            )
+        return instance
+
+    def _run_fallback(self, circuit, reason):
+        fallback = self._make_fallback()
+        if fallback is None:
+            raise RuntimeError(reason)
+
+        self.used_fallback_ = True
+        self.fallback_reason_ = reason
+        self.fallback_solver_ = fallback
+
+        name = fallback.__class__.__name__
+        warnings.warn(
+            f"SPDSolver: {reason}; falling back to {name}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+        # p-kit solver contract: solve(circuit) -> (I, m).
+        out = fallback.solve(circuit)
+        if not isinstance(out, tuple) or len(out) < 2:
+            raise TypeError(f"{name}.solve(circuit) must return an (I, m) tuple")
+        return out[0], out[1]
+
+    def solve(self, circuit):
+        self.used_fallback_ = False
+        self.fallback_reason_ = None
+        self.fallback_solver_ = None
+
+        J, h = dense_jh(circuit)
+        n = h.size
+        mapping = ising_to_spd(J, h, self.i0, self.margin)
+        quality = mapping_quality(J, h, mapping, self.max_condition)
+
+        self.mapping_ = mapping
+        self.mapping_quality_ = quality
+        self.mapping_error_ = mapping_identity_error(J, h, mapping, self.i0)
+
+        if self.verbose:
+            print(
+                f"SPD map score={quality.score:.6f} "
+                f"fidelity={quality.fidelity:.6f} "
+                f"rank={quality.rank:.6f} "
+                f"nrmse={quality.nrmse:.2e} "
+                f"cond={quality.condition:.2e}"
+            )
+
+        if quality.score < self.min_mapping_score:
+            reason = (
+                f"mapping score {quality.score:.6f} below minimum "
+                f"{self.min_mapping_score:.6f}"
+            )
+            return self._run_fallback(circuit, reason)
+
+        rng = np.random.default_rng(self.seed)
+        target = target_corr(mapping, n)
+        X = target.copy() if self.mode == "fast" else np.eye(n)
+        state = rng.choice((-1.0, 1.0), size=n)
+        current_energy = float(energy(state, J, h)[0])
+        threshold = NormalDist().inv_cdf(1.0 - self.flip_prob)
+
+        all_I = np.empty((self.Nt, n))
+        all_m = np.empty((self.Nt, n))
+        all_E = np.empty(self.Nt)
+        accepted = 0
+
         for t in range(self.Nt):
-            if self.mode=="analog":
-                drift=riem_log(X,T); G=rng.normal(size=(n,n)); G=.5*(G+G.T); H=spd_pow(X,.5)
-                X=to_corr(riem_exp(X,self.rate*drift+self.noise*np.sqrt(self.rate)*(H@G@H)))
-            flip=gaussian(rng,X)>th; sp=s.copy(); sp[flip]*=-1.; Ep=float(energy(sp,J,h)[0]); dE=Ep-E
-            if dE<=0 or rng.random()<np.exp(-self.i0*dE): s=sp; E=Ep; accepted+=1
-            all_m[t]=s; all_I[t]=self.i0*(J@s+h); all_E[t]=E
-        self.manifold_state_=X; self.energies_=all_E; self.acceptance_rate_=accepted/self.Nt; self.final_distance_=riem_dist(X,T)
-        return all_I,all_m
+            if self.mode == "analog":
+                drift = riem_log(X, target)
+                noise = rng.normal(size=(n, n))
+                noise = 0.5 * (noise + noise.T)
+                sqrt_X = spd_pow(X, 0.5)
+                tangent_noise = sqrt_X @ noise @ sqrt_X
+                tangent = (
+                    self.rate * drift
+                    + self.noise * np.sqrt(self.rate) * tangent_noise
+                )
+                X = to_corr(riem_exp(X, tangent))
+
+            flip = gaussian(rng, X) > threshold
+            proposal = state.copy()
+            proposal[flip] *= -1.0
+            proposal_energy = float(energy(proposal, J, h)[0])
+            delta_energy = proposal_energy - current_energy
+
+            # For delta_energy > 0 the exponent is <= 0; large values
+            # safely underflow to zero, corresponding to rejection.
+            accept = (
+                delta_energy <= 0
+                or rng.random() < np.exp(-self.i0 * delta_energy)
+            )
+            if accept:
+                state = proposal
+                current_energy = proposal_energy
+                accepted += 1
+
+            all_m[t] = state
+            all_I[t] = self.i0 * (J @ state + h)
+            all_E[t] = current_energy
+
+        self.manifold_state_ = X
+        self.energies_ = all_E
+        self.acceptance_rate_ = accepted / self.Nt
+        self.final_distance_ = riem_dist(X, target)
+        return all_I, all_m
