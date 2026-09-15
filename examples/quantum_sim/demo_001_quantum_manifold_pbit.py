@@ -1,8 +1,7 @@
 """
-
 This is a single-qubit research demo. The objective of the demo is to make
 a link between p-bit probabilistic computing, Riemannian geometry, and the
-quantum Bloch sphere. It explores this combination for a potential future 
+quantum Bloch sphere. It explores this combination for a potential future
 quantum simulator.
 
 A pure single-qubit state is treated first as a point on the Riemannian
@@ -11,39 +10,46 @@ metric. Three independent p-bits statistically realize the Bloch
 coordinates, gates act as CP^1 isometries, and one additional p-bit samples
 projective measurements.
 
-So the the qubit lives on CP^1, p-bits realize that state statistically, 
+So the qubit lives on CP^1, p-bits realize that state statistically,
 gates move it geometrically, and measurements are sampled probabilistically.
 
-GATE_SEQUENCE represents a small quantum circuit test. 
+GATE_SEQUENCE represents a small quantum circuit test.
 
 ManifoldPBitQubit      # single-qubit simulator object
 ├── CP1BlochManifold   # geometry
 └── PBitCP1Backend     # realization using p-bits
 
 The demo reports:
-  * the raw p-bit Bloch-vector norm before projection back to CP^1;
-  * an effective pre-projection purity indicator (1 + |raw_means|^2) / 2;
-  * Fubini-Study reconstruction error and target-state fidelity;
-  * tangent-space error decomposition into local polar/azimuthal components;
-  * mean and standard deviation over multiple independent p-bit trials;
-  * Born-rule measurement counts and projective-collapse behavior.
+
+* the raw p-bit Bloch-vector norm before projection back to CP^1;
+* an effective pre-projection purity indicator (1 + |raw_means|^2) / 2;
+* Fubini-Study reconstruction error and target-state fidelity;
+* tangent-space error decomposition into local polar/azimuthal components;
+* mean and standard deviation over multiple independent p-bit trials;
+* Born-rule measurement counts and projective-collapse behavior.
 
 The raw norm/purity values are diagnostics of the stochastic state estimate;
 finite sampling and finite p-bit bias can move the raw estimate away from the
 unit sphere, so they should not by themselves be interpreted as physical
 mixed-state tomography.
 
+The final test shows that after applying different gates to the qubit, the
+p-bit representation reproduces the stochastic measurement distribution
+expected for the resulting single-qubit state. Each gate changes the quantum
+state, and therefore the expected measurement probabilities, while the same
+p-bit encoding and sampling mechanism is used throughout.
+
 Results:
-    The quantum manifold  p-bit representation is numerically stable and reproduces
-    single-qubit circuit behavior well.
-    
+The quantum manifold p-bit representation is numerically stable and reproduces
+single-qubit circuit behavior well.
+
 The question is how far we can go from here.
 
 Could coupled p-bits provide a stochastic representation of joint probability
 distributions and correlations associated with points on higher-dimensional
 quantum-state manifolds?
-
 """
+
 
 import numpy as np
 
